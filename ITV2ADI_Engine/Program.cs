@@ -1,4 +1,11 @@
-﻿using System;
+﻿/* Copyright (C) 2018 SCH Tech Ltd - All Rights Reserved
+ * You may use, distribute and modify this code under the
+ * terms of the GNU General Public License v3.0 license.
+ * email: simon[[@]]schtech.co.uk
+ * (without the [[]] obviously)
+ * https://www.linkedin.com/in/simonbridgens/
+ */
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.ServiceProcess;
@@ -17,7 +24,7 @@ namespace ITV2ADI_Engine
             ServiceBase[] ServicesToRun;
             ServicesToRun = new ServiceBase[]
             {
-                new Service1()
+                new ITV2ADI_Service()
             };
             ServiceBase.Run(ServicesToRun);
         }

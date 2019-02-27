@@ -1,6 +1,6 @@
 ﻿namespace ITV2ADI_Engine
 {
-    partial class Service1
+    partial class ITV2ADI_Service
     {
         /// <summary> 
         /// Required designer variable.

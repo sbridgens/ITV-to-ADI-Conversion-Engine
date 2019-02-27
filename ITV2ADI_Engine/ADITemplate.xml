@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ADI xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.eventis.nl/PRODIS/ADI">
+  <Metadata>
+    <AMS Asset_Class="package" Asset_ID="" Asset_Name="" Creation_Date="" Description="" Product="" Provider="" Provider_ID="" Verb="" Version_Major="1" Version_Minor="0" />
+    <App_Data App="VOD" Name="Metadata_Spec_Version" Value="CableLabsVOD1.1" />
+    <App_Data App="VOD" Name="Provider_Content_Tier" Value="Digit" />
+  </Metadata>
+  <Asset>
+    <Metadata>
+      <AMS Asset_Class="title" Asset_ID="" Asset_Name="" Creation_Date="" Description="" Product="" Provider="" Provider_ID="" Verb="" Version_Major="1" Version_Minor="0" />
+      <App_Data App="VOD" Name="Title_Sort_Name" Value="" />
+      <App_Data App="VOD" Name="Summary_Long" Value="" />
+      <App_Data App="VOD" Name="Summary_Medium" Value="" />
+      <App_Data App="VOD" Name="Distributor_Name" Value="" />
+      <App_Data App="VOD" Name="Type" Value="title" />
+      <App_Data App="VOD" Name="Rating" Value="" />
+      <App_Data App="VOD" Name="Run_Time" Value="" />
+      <App_Data App="VOD" Name="Country_of_Origin" Value="" />
+      <App_Data App="VOD" Name="Studio_Code" Value="" />
+      <App_Data App="VOD" Name="Show_Type" Value="" />
+      <App_Data App="VOD" Name="Billing_ID" Value="" />
+      <App_Data App="VOD" Name="External_Reference" Value="" />
+      <App_Data App="VOD" Name="Licensing_Window_Start" Value="" />
+      <App_Data App="VOD" Name="Licensing_Window_End" Value="" />
+      <App_Data App="VOD" Name="ExtraData_1" Value="" />
+      <App_Data App="VOD" Name="ExtraData_3" Value="" />
+      <App_Data App="PTP" Name="Display_Provider" Value="" />
+      <App_Data App="PTP" Name="UI_Location" Value="" />
+      <App_Data App="PTP" Name="Folder_Location" Value="" />
+    </Metadata>
+	 <Asset>
+      <Metadata>
+        <AMS Asset_Class="movie" Asset_ID="" Asset_Name="" Creation_Date="" Description="" Product="" Provider="" Provider_ID="" Verb="" Version_Major="1" Version_Minor="0" />
+        <App_Data App="VOD" Name="Audio_Type" Value="" />
+        <App_Data App="VOD" Name="CGMS_A" Value="" />
+        <App_Data App="VOD" Name="Content_CheckSum" Value="" />
+        <App_Data App="VOD" Name="Content_FileSize" Value="" />
+        <App_Data App="VOD" Name="Copy_Protection" Value="Y" />
+        <App_Data App="VOD" Name="Encoding_Type" Value="H264-HD" />
+        <App_Data App="VOD" Name="HDContent" Value="Y" />
+        <App_Data App="VOD" Name="Languages" Value="" />
+        <App_Data App="VOD" Name="Screen_Format" Value="Widescreen" />
+        <App_Data App="VOD" Name="Type" Value="movie" />
+      </Metadata>
+      <Content Value="" />
+    </Asset>
+  </Asset>
+</ADI>

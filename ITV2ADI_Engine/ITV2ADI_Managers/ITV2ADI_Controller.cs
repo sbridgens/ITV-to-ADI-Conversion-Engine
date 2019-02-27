@@ -1,0 +1,178 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using ITV2ADI_Engine.ITV2ADI_Workers;
+using SCH_CONFIG;
+using SCH_QUEUE;
+
+namespace ITV2ADI_Engine.ITV2ADI_Managers
+{
+    public class ITV2ADI_Controller
+    { /// <summary>
+      /// Initialize Log4net
+      /// </summary>
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ITV2ADI_Controller));
+
+        PollController _PollHandler;
+
+        /// <summary>
+        /// Property: Boolean value to indicate if a method executed correctly.
+        /// </summary>
+        private bool B_IsSuccess { get; set; }
+
+        /// <summary>
+        /// Function to resolve application assemblies that are contained in sub directories.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        private Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            // Ignore missing resources
+            if (args.Name.Contains(".resources"))
+                return null;
+
+            // check for assemblies already loaded
+            Assembly assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.FullName == args.Name);
+            if (assembly != null)
+                return assembly;
+
+            // Try to load by filename - split out the filename of the full assembly name
+            // and append the base path of the original assembly (ie. look in the same dir)
+            string filename = args.Name.Split(',')[0] + ".dll".ToLower();
+
+            string asmFile = Path.Combine(@".\", "mslib", filename);
+
+            try
+            {
+                return Assembly.LoadFrom(asmFile);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Service Function entry point, this function dedects if the application can start correctly
+        /// if the config is not found or correctly loaded the service will fail to start.
+        /// </summary>
+        /// <param name="objdata"></param>
+        public void WF_Start(object objdata)
+        {
+            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
+
+            ITV2ADI_Controller _Controller = (ITV2ADI_Controller)objdata;
+
+            log.Info("************* Service Starting **************");
+            LoadAppConfig();
+            if (ITV2ADI_Config_Handler.B_IsRunning)
+            {
+                log.Info("Service Started Successfully");
+
+                _PollHandler = new PollController();
+                Cleanup();
+                StartITV2ADI_Engine();
+            }
+            else
+            {
+                log.Error("Service Stopping due to error or manual stop.");
+            }
+        }
+
+        void LoadAppConfig()
+        {
+            try
+            {
+                log.Info("Loading Application Configuration.");
+                ITV2ADI_Config_Handler.B_IsRunning = false;
+                ITV2ADI_Config_Handler.LoadApplicationConfig(Properties.Settings.Default.XmlConfigFile);
+            }
+            catch(Exception LAC_EX)
+            {
+                log.Error($"Failed loading Service configuration: {LAC_EX.Message}");
+                if (log.IsDebugEnabled)
+                    log.Debug($"STACK TRACE: {LAC_EX.StackTrace}");
+            }
+        }
+
+        void StartITV2ADI_Engine()
+        {
+            while (ITV2ADI_Config_Handler.B_IsRunning == true)
+            {
+                string pollFiles = _PollHandler.StartPolling();
+                if (!string.IsNullOrEmpty(pollFiles))
+                    log.Info(pollFiles);
+
+
+                if (_PollHandler.B_FilesToProcess)
+                {
+                    ProcessQueuedItems();
+                }
+
+                Thread.Sleep(Convert.ToInt32(ITV2ADI_CONFIG.PollIntervalInSeconds) * 1000);
+            }
+        }
+
+        /// <summary>
+        /// Main worker function. This function iterates each deliverable in turn and executes the main processing entry points.
+        /// </summary>
+        private void ProcessQueuedItems()
+        {
+            if(WF_WorkQueue.queue.Count >= 1)
+            {
+                for (int q = 0; q < WF_WorkQueue.queue.Count; q++)
+                {
+                    try
+                    {
+                        WorkQueueItem itvFile = (WorkQueueItem)WF_WorkQueue.queue[q];
+
+                        //InitializeNewAsset(ingestFile);
+
+                        log.Info($"############### Processing STARTED For Queued item {q + 1} of {WF_WorkQueue.queue.Count}: {itvFile.file.Name} ###############\r\n");
+
+                        MapITVtoADI mapping = new MapITVtoADI();
+                        mapping.ITV_FILE = itvFile.file.FullName;
+                        mapping.StartItvMapping();
+
+                        if (B_IsSuccess)
+                        {
+                            log.Info($"All operations completed Successfully, removing source itv file working directory for: {itvFile}");
+                            //DeleteItem(OutputDirectory, true);
+                            //DeleteItem(SourceArchive, false);
+                            log.Info($"############### Processing FINISHED For Queued file: {itvFile} ###############\r\n");
+                        }
+                        else
+                        {
+                            //HANDLE Failures here!
+                        }
+                    }
+                    catch (Exception PQI_EX)
+                    {
+                        log.Error($"Caught Exception during Process of Queued Items: {PQI_EX.Message}");
+
+                        if (log.IsDebugEnabled)
+                            log.Debug($"Stack Trace: {PQI_EX.StackTrace}");
+
+                        continue;
+                    }
+                    finally
+                    {
+                        //Cleanup static values
+                        //ClearStaticData();
+                    }
+                }
+            }
+        }
+
+        void Cleanup()
+        {
+
+        }
+    }
+}

@@ -1,0 +1,63 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ITV2ADI_Engine.ITV2ADI_Workers
+{
+    public class MappingLookup
+    {
+        /// <summary>
+        /// Value pair is ADI first then ITV match
+        /// </summary>
+        public List<KeyValuePair<string, string>> Mappings = new List<KeyValuePair<string, string>>
+        {
+            new KeyValuePair<string, string>("MSORating", "ContentGuidance"),
+            new KeyValuePair<string, string>("Actors","Actors"),
+            new KeyValuePair<string, string>("Advisories", "Advisories"),
+            new KeyValuePair<string, string>("Audience", "ReportingClass"),
+            new KeyValuePair<string, string>("Billing_ID", "BillingId"),
+            new KeyValuePair<string, string>("Broadcast_Date", "CreationDate"),
+            new KeyValuePair<string, string>("Country_of_Origin", "CountryOfOrigin"),
+            new KeyValuePair<string, string>("Director", "Directors"),
+            new KeyValuePair<string, string>("Display_Provider", "DisplayProvider"),
+            new KeyValuePair<string, string>("Distributor_Name", "Distributor"),
+            new KeyValuePair<string, string>("Episode_ID", "Episode_ID"),
+            new KeyValuePair<string, string>("Episode_Name", "Episode_Name"),
+            new KeyValuePair<string, string>("Episode_Ordinal", "Episode_Ordinal"),
+            new KeyValuePair<string, string>("External_Reference", "ProviderAssetId"),
+            new KeyValuePair<string, string>("ExtraData_1", "none"),
+            new KeyValuePair<string, string>("ExtraData_3", "none"),
+            //Need to convert to folder location based on mapping doc.
+            new KeyValuePair<string, string>("Folder_Location", "ReportingClass"),
+            new KeyValuePair<string, string>("Genre", "Genre"),
+            new KeyValuePair<string, string>("Licensing_Window_End", "DeactivateTime"),
+            new KeyValuePair<string, string>("Licensing_Window_Start", "ActivateTime"),
+            new KeyValuePair<string, string>("ExpiryAfterDownload", "ExpiryAfterDownload"),
+            new KeyValuePair<string, string>("ExpiryAfterPlay", "ExpiryAfterPlay"),
+            new KeyValuePair<string, string>("MaxDownloads", "MaxDownloads"),
+            new KeyValuePair<string, string>("Maximum_Viewing_Length", "RentalTime"),
+            new KeyValuePair<string, string>("Producer", "Producer"),
+            new KeyValuePair<string, string>("Rating", "Rating"),
+            new KeyValuePair<string, string>("Series_ID", "Series_ID"),
+            new KeyValuePair<string, string>("Series_Name", "Series_Name"),
+            new KeyValuePair<string, string>("Series_Ordinal", "Series_Ordinal"),
+            new KeyValuePair<string, string>("Show_ID", "Show_ID"),
+            new KeyValuePair<string, string>("Show_Name", "Show_Name"),
+            new KeyValuePair<string, string>("Show_Type", "Show_Type"),
+            new KeyValuePair<string, string>("Studio_Code", "ProviderId"),
+            new KeyValuePair<string, string>("Studio_Name", "Studio"),
+            new KeyValuePair<string, string>("Suggested_Price", "ServiceCode"),
+            new KeyValuePair<string, string>("Summary_Long", "SummaryLong"),
+            new KeyValuePair<string, string>("Summary_Medium", "SummaryMedium"),
+            new KeyValuePair<string, string>("Summary_Short", "Description"),
+            new KeyValuePair<string, string>("Title", "Title"),
+            new KeyValuePair<string, string>("Title_Brief", "Title"),
+            new KeyValuePair<string, string>("Title_Sort_Name", "TitleSortName"),
+            new KeyValuePair<string, string>("UI_Location", "UILocation"),
+            new KeyValuePair<string, string>("Writer", "Writer"),
+            new KeyValuePair<string, string>("Year", "YearOfRelease")
+        };
+    }
+}
