@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using ITV2ADI_Engine.ITV2ADI_Serialization;
+using SCH_ADI;
 using SCH_CONFIG;
 using SCH_ITV;
 
@@ -20,13 +20,12 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
         public string ITV_FILE { get; set; }
         
-        private string Padding { get { return new string('0', 16 - _Parser.ITV_PAID.Length); } }
-
         private XmlSerializerHelper<ADI> xmlSerializer;
         
         //private readonly MappingLookup TitleAppData = new MappingLookup();
 
         private ADI _ADI;
+        private ADI_Mapping _Mapping;
         private ADIAssetMetadataApp_Data _ADIAssetMetadataApp_Data;
         private ADIAssetAssetMetadataApp_Data _ADIAssetAssetMetadataApp_Data;
 
@@ -44,11 +43,12 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             try
             {
                 _ADI = new ADI();
-
+                _Mapping = new ADI_Mapping();
                 ADI_FILE = Properties.Resources.ADITemplate;
                 xmlSerializer = new XmlSerializerHelper<ADI>();
 
                 _ADI = xmlSerializer.Read(ADI_FILE);
+                _Mapping._ADI = _ADI;
             }
             catch (Exception LAT_EX)
             {

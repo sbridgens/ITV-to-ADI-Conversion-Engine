@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,32 +9,78 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 {
     public class ITVConversionFunctions
     {
-        private const string Digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-        private const string Min = "-1Y2P0IJ32E8E8";
+        public ITVConversionContext Db { get; set; }
 
-        private const string Max = "1Y2P0IJ32E8E7";
-
-        public string GetBillingId(string paid)
+        public string ParseReportingClass(string ReportingClass, bool isShowType)
         {
-            ///taken from https://github.com/tallesl/net-36/blob/master/Library/Base36.cs
-            ///however i didnt want the library or reinvent the wheel :)
-            long value = Convert.ToInt32(paid.TrimStart('0'));
+            var result = Db.ReportClassMapping.Where(r => r.ReportingClass.ToLower() == ReportingClass.ToLower()
+                                                      && r.ClassIncludes == null)
+                                             .Select(f => f.FolderLocation).FirstOrDefault();
 
-            if (value == long.MinValue)
-                return Min;
-
-            var negative = value < 0;
-            value = Math.Abs(value);
-            var encoded = string.Empty;
-
-            do
+            if (!string.IsNullOrEmpty(result) && !isShowType)
             {
-                encoded = Digits[(int)(value % Digits.Length)] + encoded;
+                return result;
             }
-            while ((value /= Digits.Length) != 0);
-
-            return negative ? "-" + encoded : encoded;
+            else
+            {
+                return ParseReportClassIncludes(ReportingClass, isShowType);
+            }
         }
+
+        private string ParseReportClassIncludes(string ReportingClass, bool isShowType)
+        {
+            var includes = Db.ReportClassMapping.Where(r => ReportingClass.ToLower().Contains(r.ReportingClass.ToLower()))
+                                                   .Select(r => new
+                                                   {
+                                                       r.ClassIncludes,
+                                                       r.ReportingClass,
+                                                       r.FolderLocation,
+                                                       r.ShowType
+                                                   })
+                                                   .FirstOrDefault();
+
+
+            List<string> incList = includes.ClassIncludes?.Split(',').ToList();
+
+            if (!string.IsNullOrEmpty(includes.ClassIncludes))
+            {
+                int count = incList.Count;
+
+                foreach (var include in incList)
+                {
+                    if (ReportingClass.ToLower() == $"{includes.ReportingClass} {include}".ToLower())
+                    {
+                        if (isShowType)
+                        {
+                            return includes.ShowType;
+                        }
+                        else
+                        {
+                            return includes.FolderLocation;
+                        }
+                    }
+
+                    count--;
+                    //If zero then the class is a part of excludes list ie cutv asset so we can assume here 
+                    //that we matched no kids based include categories and can return the location associated
+                    //with cutv that has no include classes.
+                    if (count == 0)
+                    {
+                        return Db.ReportClassMapping.Where(r => ReportingClass.ToLower().Contains(r.ReportingClass.ToLower()) &&
+                                                                   r.ClassIncludes == null)
+                                                       .Select(f => f.FolderLocation)
+                                                       .FirstOrDefault().ToString();
+                    }
+                }
+            }
+            else if (isShowType)
+            {
+                return includes.ShowType;
+            }
+
+            return "";
+        }
+        
     }
 }

@@ -104,7 +104,8 @@
     <Reference Include="Remotion.Linq, Version=2.2.0.0, Culture=neutral, PublicKeyToken=fee00910d6e5f53b, processorArchitecture=MSIL">
       <HintPath>..\packages\Remotion.Linq.2.2.0\lib\net45\Remotion.Linq.dll</HintPath>
     </Reference>
-    <Reference Include="SCH_ADI">
+    <Reference Include="SCH_ADI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\SCH_LIB\SCH_ADI\bin\Release\SCH_ADI.dll</HintPath>
     </Reference>
     <Reference Include="SCH_CONFIG">
@@ -236,14 +237,13 @@
   <ItemGroup>
     <Compile Include="ITV2ADI_Database\FieldMappings.cs" />
     <Compile Include="ITV2ADI_Managers\ITV2ADI_Controller.cs" />
-    <Compile Include="ITV2ADI_Serialization\XmlSerializerHelper.cs" />
     <Compile Include="ITV2ADI_Service.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="ITV2ADI_Service.Designer.cs">
       <DependentUpon>ITV2ADI_Service.cs</DependentUpon>
     </Compile>
-    <Compile Include="ITV2ADI_Workers\ADI_Mapping_Functions.cs" />
+    <Compile Include="ITV2ADI_Workers\MapITVtoADI_Functions.cs" />
     <Compile Include="ITV2ADI_Workers\FileDirectoryOperations.cs" />
     <Compile Include="ITV2ADI_Workers\ITVConversionFunctions.cs" />
     <Compile Include="ITV2ADI_Workers\MapITVtoADI.cs" />
@@ -298,7 +298,6 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\Microsoft.EntityFrameworkCore.Design.2.2.2\build\net461\Microsoft.EntityFrameworkCore.Design.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.EntityFrameworkCore.Design.2.2.2\build\net461\Microsoft.EntityFrameworkCore.Design.props'))" />
   </Target>
-  <!--
   <Target Name="AfterBuild">
     <ItemGroup>
       <MoveToLibFolder Include="$(OutputPath)*.dll ; $(OutputPath)*.pdb ; $(OutputPath)*.xml" />
@@ -308,5 +307,5 @@
     <Move SourceFiles="@(MoveToLibFolder)" DestinationFolder="$(OutputPath)mslib" OverwriteReadOnlyFiles="true" />
     <Move SourceFiles="@(MoveThirdParty)" DestinationFolder="$(OutputPath)" OverwriteReadOnlyFiles="true" />
     <Move SourceFiles="@(MoveFinal)" DestinationFolder="$(OutputPath)" OverwriteReadOnlyFiles="true" />
-  </Target>-->
+  </Target>
 </Project>
