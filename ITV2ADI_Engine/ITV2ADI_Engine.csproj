@@ -302,7 +302,7 @@
       <MoveThirdParty Include="$(OutputPath)mslib\log4net*.*; $(OutputPath)mslib\SCH_*.*" />
       <MoveFinal Include="$(OutputPath)mslib\ITV2ADI*.*; $(OutputPath)mslib\INIFile*.*" />
     </ItemGroup>
-    <Move SourceFiles="@(MoveToLibFolder)" DestinationFolder="$(OutputPath)mslib" OverwriteReadOnlyFiles="true" />
+    <!-- <Move SourceFiles="@(MoveToLibFolder)" DestinationFolder="$(OutputPath)mslib" OverwriteReadOnlyFiles="true" /> -->
     <Move SourceFiles="@(MoveThirdParty)" DestinationFolder="$(OutputPath)" OverwriteReadOnlyFiles="true" />
     <Move SourceFiles="@(MoveFinal)" DestinationFolder="$(OutputPath)" OverwriteReadOnlyFiles="true" />
   </Target>

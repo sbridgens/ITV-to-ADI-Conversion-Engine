@@ -10,5 +10,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
         public string AdiElement { get; set; }
         public string ItvElement { get; set; }
         public bool IsTitleMetadata { get; set; }
+        public bool IsMandatoryField { get; set; }
     }
 }

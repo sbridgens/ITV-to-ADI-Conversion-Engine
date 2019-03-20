@@ -104,8 +104,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
         
-        private void SetPackageVars(string item_keyname, string comp_keyname, string ctype)
+        private bool SetRequiredPackageVars(string item_keyname, string comp_keyname, string ctype)
         {
+            //Below items required earlier for reference and processing.
+
             //get the component ID (asset section matching product) and adds the productid and component id to a dictionary
             //in order of component name to avoid key exists errors as the product key is shared across components.
             _Parser.ProductsComponentMappingList.Add($"{comp_keyname},{ctype}", item_keyname);
@@ -114,7 +116,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             _Parser.ITV_PAID = Regex.Replace(_Parser.GET_ITV_VALUE("ProviderAssetId"), "[A-Za-z ]", "");
             WorkingDirectory = Path.Combine(ITV2ADI_CONFIG.TempWorkingDirectory, _Parser.ITV_PAID);
             MediaDirectory = Path.Combine(WorkingDirectory, "media");
-
+            
             ProgramTitle = _Parser.GET_ITV_VALUE("Title");
             ProductId = item_keyname;
             AssetId = comp_keyname;
@@ -122,9 +124,21 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             LicenseEnd = Convert.ToDateTime(_Parser.GET_ITV_VALUE("DeactivateTime"));
             ProviderName = _Parser.GET_ITV_VALUE("Provider");
             ProviderId = _Parser.GET_ITV_VALUE("ProviderId");
-            MediaFileName = _Parser.GET_ASSET_DATA("FileName");
-            Publication_Date = Convert.ToDateTime(_Parser.GET_ASSET_DATA("Publication_Date"));
+            Publication_Date = Convert.ToDateTime(_Parser.GET_ITV_VALUE("Publication_Date"));
 
+            MediaFileName = _Parser.GET_ASSET_DATA("FileName");
+            ActiveDate = _Parser.GET_ASSET_DATA("ActiveDate");
+            DeactiveDate = _Parser.GET_ASSET_DATA("DeactiveDate");
+
+            if ((string.IsNullOrEmpty(ActiveDate)) || string.IsNullOrEmpty(DeactiveDate))
+            {
+                log.Error($"Rejected: Source ITV does not contain one of the following mandatory fields: ActiveData, DeactiveDate at asset level");
+                return false;
+            }
+            else
+            {
+                return true;
+            }
         }
 
         private bool StartProcessing()
@@ -157,28 +171,30 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
                 if (ComponentData.Value != "4")
                 {
-                    SetPackageVars(productData.KeyName, ComponentData.KeyName, ctype);
-                    string programName = _Parser.GET_ITV_VALUE("BillingName");
-
-                    log.Info($"*************** Generating Package For Product ID: { productData.KeyName}, Program name: {programName} ***************\r\n");
-
-                    log.Info($"Product ID: {productData.KeyName} has Matching ComponentID: {ComponentData.KeyName},{ctype}");
-                    log.Info($"Current PAID Value for Product ID: {productData.KeyName}: {_Parser.ITV_PAID}\r\n");
-
-
-                    LoadAdiTemplate();
-
-                    if (StartProcessing())
+                    if (SetRequiredPackageVars(productData.KeyName, ComponentData.KeyName, ctype))
                     {
-                        log.Info($"All operations completed Successfully, removing temporary Files/Directories for Product ID: {productData.KeyName}");
-                        log.Info($"***************Packaging FINISHED For Product ID: {productData.KeyName}, Program name: {programName} ***************\r\n");
-                    }
-                    else
-                    {
-                        log.Error("Failed during Conversion Process, the relevant error should be logged above for the problem area, check logs for errors and rectify.");
-                        log.Info($"Removing Temp working directory: {WorkingDirectory}");
-                        FileDirectoryOperations.DeleteDirectory(WorkingDirectory);
-                        log.Error($"***************Packaging FAILED For Product ID: {productData.KeyName}, Program name: {programName} ***************\r\n");
+                        string programName = _Parser.GET_ITV_VALUE("BillingName");
+
+                        log.Info($"*************** Generating Package For Product ID: { productData.KeyName}, Program name: {programName} ***************\r\n");
+
+                        log.Info($"Product ID: {productData.KeyName} has Matching ComponentID: {ComponentData.KeyName},{ctype}");
+                        log.Info($"Current PAID Value for Product ID: {productData.KeyName}: {_Parser.ITV_PAID}\r\n");
+
+
+                        LoadAdiTemplate();
+
+                        if (StartProcessing())
+                        {
+                            log.Info($"All operations completed Successfully, removing temporary Files/Directories for Product ID: {productData.KeyName}");
+                            log.Info($"***************Packaging FINISHED For Product ID: {productData.KeyName}, Program name: {programName} ***************\r\n");
+                        }
+                        else
+                        {
+                            log.Error("Failed during Conversion Process, the relevant error should be logged above for the problem area, check logs for errors and rectify.");
+                            log.Info($"Removing Temp working directory: {WorkingDirectory}");
+                            FileDirectoryOperations.DeleteDirectory(WorkingDirectory);
+                            log.Error($"***************Packaging FAILED For Product ID: {productData.KeyName}, Program name: {programName} ***************\r\n");
+                        }
                     }
                 }
             }

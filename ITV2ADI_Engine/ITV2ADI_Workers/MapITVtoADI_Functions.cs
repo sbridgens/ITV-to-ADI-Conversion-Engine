@@ -46,6 +46,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
         private DateTime Publication_Date { get; set; }
 
+        public string ActiveDate { get; set; }
+
+        public string DeactiveDate { get; set; }
+
         private int? Version_Major { get; set; }
 
         private bool IsTVOD { get; set; }
@@ -221,7 +225,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             try
             {
                 ZipHandler zipHandler = new ZipHandler();
-                string fname = _Parser.ITV_PAID;
+                string fname = IsTVOD ? $"TVOD_{_Parser.ITV_PAID}" : _Parser.ITV_PAID;
                 string package = $"{WorkingDirectory}.zip";
                 string tmpPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.tmp");
                 string finalPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.zip");
@@ -276,6 +280,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     foreach (var entry in db.FieldMappings.OrderBy(x => x.ItvElement))
                     {
                         var itvValue = "";
+                        bool IsMandatoryField = entry.IsMandatoryField;
 
                         if (B_IsFirst)
                         {
@@ -313,6 +318,11 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                                                      entry.AdiElement,
                                                      itvValue,
                                                      entry.IsTitleMetadata);
+                        }
+                        else if(entry.IsMandatoryField && string.IsNullOrEmpty(itvValue))
+                        {
+                            log.Error($"Rejected: Mandatory itv Field: {entry.ItvElement} not Found in the source ITV File.");
+                            return false;
                         }
                     }
 
