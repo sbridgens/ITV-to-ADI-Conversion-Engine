@@ -20,6 +20,8 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
 
         PollController _PollHandler;
 
+        MapITVtoADI mapping;
+
         /// <summary>
         /// Property: Boolean value to indicate if a method executed correctly.
         /// </summary>
@@ -76,7 +78,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                 log.Info("Service Started Successfully");
 
                 _PollHandler = new PollController();
-                Cleanup();
                 StartITV2ADI_Engine();
             }
             else
@@ -105,7 +106,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
         {
             while (ITV2ADI_Config_Handler.B_IsRunning == true)
             {
-                string pollFiles = _PollHandler.StartPolling();
+                string pollFiles = _PollHandler.StartPolling(ITV2ADI_CONFIG.InputDirectory,".itv");
                 if (!string.IsNullOrEmpty(pollFiles))
                     log.Info(pollFiles);
 
@@ -128,28 +129,27 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
             {
                 for (int q = 0; q < WF_WorkQueue.queue.Count; q++)
                 {
+                    WorkQueueItem itvFile = (WorkQueueItem)WF_WorkQueue.queue[q];
+
                     try
                     {
-                        WorkQueueItem itvFile = (WorkQueueItem)WF_WorkQueue.queue[q];
+                        log.Info($"############### Processing STARTED For Queued item {q + 1} of {WF_WorkQueue.queue.Count}: {itvFile.file.Name} ###############\r\n\r\n");
 
-                        //InitializeNewAsset(ingestFile);
-
-                        log.Info($"############### Processing STARTED For Queued item {q + 1} of {WF_WorkQueue.queue.Count}: {itvFile.file.Name} ###############\r\n");
-
-                        MapITVtoADI mapping = new MapITVtoADI();
+                        mapping = new MapITVtoADI();
                         mapping.ITV_FILE = itvFile.file.FullName;
-                        mapping.StartItvMapping();
 
-                        if (B_IsSuccess)
+                        if (mapping.StartItvMapping())
                         {
-                            log.Info($"All operations completed Successfully, removing source itv file working directory for: {itvFile}");
-                            //DeleteItem(OutputDirectory, true);
-                            //DeleteItem(SourceArchive, false);
-                            log.Info($"############### Processing FINISHED For Queued file: {itvFile} ###############\r\n");
+                            log.Info($"All operations completed Successfully, removing source itv file working directory for: {mapping.ITV_FILE}");
+                           
+
+                            log.Info($"############### Processing SUCCESSFUL For Queued file: {mapping.ITV_FILE} ###############\r\n\r\n");
                         }
                         else
                         {
-                            //HANDLE Failures here!
+                            //move the source file and media to a failed dir
+                            //1: create a new dir of itvfilename in failed
+                            //2: move the source itv and media to the 
                         }
                     }
                     catch (Exception PQI_EX)
@@ -159,20 +159,17 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                         if (log.IsDebugEnabled)
                             log.Debug($"Stack Trace: {PQI_EX.StackTrace}");
 
+
+                        log.Info($"############### Processing FAILED For Queued file: {itvFile.file.Name} ###############\r\n\r\n");
+
                         continue;
                     }
                     finally
                     {
-                        //Cleanup static values
-                        //ClearStaticData();
+                        mapping.CleanUp();
                     }
                 }
             }
-        }
-
-        void Cleanup()
-        {
-
         }
     }
 }

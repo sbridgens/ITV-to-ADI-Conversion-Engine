@@ -5,7 +5,7 @@
   <ExpiredAssetCleanupIntervalHours>2</ExpiredAssetCleanupIntervalHours>
   <TempWorkingDirectory>D:\itv2adi\temp</TempWorkingDirectory>
   <FailedDirectory>D:\itv2adi\failed</FailedDirectory>
-  <EnrichmentDirectory>D:\Horizon4_TestDir\ForHrzn4</EnrichmentDirectory>
+  <EnrichmentDirectory>D:\Horizon4_TestDir\Input</EnrichmentDirectory>
   <Database_Host>.\SQLEXPRESS</Database_Host>
   <Database_Name>ITVConversion</Database_Name>
   <Integrated_Security>True</Integrated_Security>

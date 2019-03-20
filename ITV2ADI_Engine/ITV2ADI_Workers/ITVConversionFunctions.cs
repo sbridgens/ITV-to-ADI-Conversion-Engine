@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ITV2ADI_Engine.ITV2ADI_Database;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -9,25 +10,54 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 {
     public class ITVConversionFunctions
     {
+        public string IsAdult { get; set; }
+
+        public bool IsMovie { get; set; }
 
         public ITVConversionContext Db { get; set; }
 
+        private void SetFlags(string showtype)
+        {
+            IsAdult = "N";
+            IsMovie = false;
+
+            switch (showtype)
+            {
+                case "movie":
+                    IsMovie = true;
+                    break;
+                case "adult":
+                    IsAdult = "Y";
+                    break;
+                default:
+                    break;
+            }
+        }
+
         public string ParseReportingClass(string ReportingClass, bool isShowType)
         {
-            var result = Db.ReportClassMapping.Where(r => r.ReportingClass.ToLower() == ReportingClass.ToLower()
-                                                      && r.ClassIncludes == null)
-                                             .Select(f => f.FolderLocation).FirstOrDefault();
 
-            if (!string.IsNullOrEmpty(result) && !isShowType)
+            var result = Db.ReportClassMapping.Where(r => r.ReportingClass.ToLower() == ReportingClass.ToLower() &&
+                                                          r.ClassIncludes == null)
+                                              .Select(f =>  new
+                                              {
+                                                 f.FolderLocation,
+                                                 f.ShowType
+                                              })
+                                              .FirstOrDefault();
+
+            SetFlags(result.ShowType.ToLower());
+            
+            if (!string.IsNullOrEmpty(result.FolderLocation) && !isShowType)
             {
-                return result;
+                return result.FolderLocation;
             }
             else
             {
                 return ParseReportClassIncludes(ReportingClass, isShowType);
             }
         }
-
+        
         private string ParseReportClassIncludes(string ReportingClass, bool isShowType)
         {
             var includes = Db.ReportClassMapping.Where(r => ReportingClass.ToLower().Contains(r.ReportingClass.ToLower()))
@@ -69,8 +99,8 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     {
                         return Db.ReportClassMapping.Where(r => ReportingClass.ToLower().Contains(r.ReportingClass.ToLower()) &&
                                                                    r.ClassIncludes == null)
-                                                       .Select(f => f.FolderLocation)
-                                                       .FirstOrDefault().ToString();
+                                                    .Select(f => f.FolderLocation)
+                                                    .FirstOrDefault().ToString();
                     }
                 }
             }

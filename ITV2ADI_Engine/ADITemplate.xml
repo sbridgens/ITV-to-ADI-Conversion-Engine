@@ -22,8 +22,6 @@
       <App_Data App="VOD" Name="External_Reference" Value="" />
       <App_Data App="VOD" Name="Licensing_Window_Start" Value="" />
       <App_Data App="VOD" Name="Licensing_Window_End" Value="" />
-      <App_Data App="VOD" Name="ExtraData_1" Value="" />
-      <App_Data App="VOD" Name="ExtraData_3" Value="" />
       <App_Data App="PTP" Name="Display_Provider" Value="" />
       <App_Data App="PTP" Name="UI_Location" Value="" />
       <App_Data App="PTP" Name="Folder_Location" Value="" />
@@ -36,7 +34,7 @@
         <App_Data App="VOD" Name="Content_CheckSum" Value="" />
         <App_Data App="VOD" Name="Content_FileSize" Value="" />
         <App_Data App="VOD" Name="Copy_Protection" Value="Y" />
-        <App_Data App="VOD" Name="Encoding_Type" Value="H264-HD" />
+        <App_Data App="VOD" Name="Encoding_Type" Value="" />
         <App_Data App="VOD" Name="HDContent" Value="Y" />
         <App_Data App="VOD" Name="Languages" Value="" />
         <App_Data App="VOD" Name="Screen_Format" Value="Widescreen" />

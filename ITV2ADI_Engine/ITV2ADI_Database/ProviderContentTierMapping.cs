@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ITV2ADI_Engine
+namespace ITV2ADI_Engine.ITV2ADI_Database
 {
     public partial class ProviderContentTierMapping
     {
