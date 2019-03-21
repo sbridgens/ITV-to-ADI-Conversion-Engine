@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ITV2ADI_Config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <InputDirectory>D:\itv2adi\input</InputDirectory>
-  <PollIntervalInSeconds>90</PollIntervalInSeconds>
+  <PollIntervalInSeconds>20</PollIntervalInSeconds>
   <ExpiredAssetCleanupIntervalHours>2</ExpiredAssetCleanupIntervalHours>
   <TempWorkingDirectory>D:\itv2adi\temp</TempWorkingDirectory>
   <FailedDirectory>D:\itv2adi\failed</FailedDirectory>

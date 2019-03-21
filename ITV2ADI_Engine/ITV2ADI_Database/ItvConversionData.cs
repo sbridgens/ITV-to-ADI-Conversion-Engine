@@ -11,8 +11,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
         public bool? IsTvod { get; set; }
         public int? VersionMajor { get; set; }
         public bool? IsAdult { get; set; }
-        public string ProductId { get; set; }
-        public string ContentId { get; set; }
         public DateTime? PublicationDate { get; set; }
         public DateTime? LicenseStartDate { get; set; }
         public DateTime? LicenseEndDate { get; set; }

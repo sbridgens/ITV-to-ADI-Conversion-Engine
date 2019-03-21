@@ -135,21 +135,18 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                     {
                         log.Info($"############### Processing STARTED For Queued item {q + 1} of {WF_WorkQueue.queue.Count}: {itvFile.file.Name} ###############\r\n\r\n");
 
-                        mapping = new MapITVtoADI();
-                        mapping.ITV_FILE = itvFile.file.FullName;
+                        mapping = new MapITVtoADI
+                        {
+                            ITV_FILE = itvFile.file.FullName
+                        };
 
                         if (mapping.StartItvMapping())
                         {
-                            log.Info($"All operations completed Successfully, removing source itv file working directory for: {mapping.ITV_FILE}");
-                           
-
                             log.Info($"############### Processing SUCCESSFUL For Queued file: {mapping.ITV_FILE} ###############\r\n\r\n");
                         }
                         else
                         {
-                            //move the source file and media to a failed dir
-                            //1: create a new dir of itvfilename in failed
-                            //2: move the source itv and media to the 
+                            throw new Exception($"Failed during itv Mapping process.");
                         }
                     }
                     catch (Exception PQI_EX)
@@ -158,8 +155,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
 
                         if (log.IsDebugEnabled)
                             log.Debug($"Stack Trace: {PQI_EX.StackTrace}");
-
-
+                        
                         log.Info($"############### Processing FAILED For Queued file: {itvFile.file.Name} ###############\r\n\r\n");
 
                         continue;

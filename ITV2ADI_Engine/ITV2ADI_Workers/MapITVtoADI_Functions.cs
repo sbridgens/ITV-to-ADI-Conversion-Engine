@@ -18,6 +18,8 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
         private bool RejectIngest { get; set; }
 
+        private bool DeleteFromSource { get; set; }
+
         private bool IsUpdate { get; set; }
 
         private int ItvData_RowId { get; set; }
@@ -53,7 +55,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         private int? Version_Major { get; set; }
 
         private bool IsTVOD { get; set; }
-
+        
         private bool SetAmsSections()
         {
             try
@@ -110,17 +112,16 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             using (ITVConversionContext uDB = new ITVConversionContext())
             {
                 var rowData = uDB.ItvConversionData.Where(p => p.Paid == _Parser.ITV_PAID)
-                                                      .Select(pd => new
-                                                      {
-                                                          pd.Id,
-                                                          pd.PublicationDate,
-                                                          pd.VersionMajor
-                                                      })
-                                                      .FirstOrDefault();
+                                                   .Select(pd => new
+                                                    {
+                                                        pd.Id,
+                                                        pd.PublicationDate,
+                                                        pd.VersionMajor
+                                                    })
+                                                   .FirstOrDefault();
 
                 if(rowData != null)
                 {
-
                     if(Publication_Date > rowData.PublicationDate)
                     {
                         log.Info("Package detected as an Update.");
@@ -154,8 +155,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         Paid = _Parser.ITV_PAID,
                         Title = ProgramTitle,
                         VersionMajor = Version_Major,
-                        ProductId = ProductId,
-                        ContentId = AssetId,
                         LicenseStartDate = LicenseStart,
                         LicenseEndDate = LicenseEnd,
                         ProviderName = ProviderName,
@@ -225,7 +224,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             try
             {
                 ZipHandler zipHandler = new ZipHandler();
-                string fname = IsTVOD ? $"TVOD_{_Parser.ITV_PAID}" : _Parser.ITV_PAID;
+                string fname = IsTVOD ? $"TVOD_{WorkDirname}" : WorkDirname;
                 string package = $"{WorkingDirectory}.zip";
                 string tmpPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.tmp");
                 string finalPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.zip");
@@ -238,16 +237,24 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 log.Info("Starting Packaging and Delivery operations.");
                 log.Info($"Packaging Source directory: {WorkingDirectory} to Zip Archive: {package}");
                 zipHandler.CompressPackage(WorkingDirectory, package);
+
                 log.Info($"Zip Archive: {package} created Successfully.");
                 log.Info($"Moving: {package} to {tmpPackage}");
                 FileDirectoryOperations.MoveFile(package, tmpPackage);
+
                 log.Info($"Successfully Moved: {package} to {tmpPackage}");
                 log.Info($"Moving tmp Package: {tmpPackage} to {finalPackage}");
                 FileDirectoryOperations.MoveFile(tmpPackage, finalPackage);
-                log.Info($"Successfully Moved: {tmpPackage} to {finalPackage}");
 
+                log.Info($"Successfully Moved: {tmpPackage} to {finalPackage}");
                 log.Info("Updating Database with final data");
                 UpdateItvData();
+
+                if(DeleteFromSource)
+                {
+                    FileDirectoryOperations.DeleteSourceMedia(MediaLocation, MediaFileName);
+                }
+
                 log.Info("Starting Packaging and Delivery operations completed Successfully.");
                 return true;
             }
@@ -355,7 +362,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
                         if(File.Exists(FullAssetName))
                         {
+                            
                             MediaLocation = location.MediaLocation;
+                            DeleteFromSource = location.DeleteFromSource;
+                            log.Info($"Source Media found in location: {MediaLocation} and DeleteFromSource Flag is: {DeleteFromSource}");
 
                             string destFname = Path.Combine(MediaDirectory, MediaFileName);
                             MediaChecksum = VideoFileProperties.GetFileHash(FullAssetName);
@@ -391,7 +401,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         return true;
                     }
                 }
-
+                log.Error($"Media file: {MediaFileName} was not found in the media locations configured, failing ingest.");
                 return false;
             }
             catch(Exception SAD_EX)
@@ -403,13 +413,15 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 return false;
             }
         }
-
-
+        
         public void CleanUp()
         {
             try
             {
-                FileDirectoryOperations.DeleteDirectory(WorkingDirectory);
+                if(WorkingDirectory != null && Directory.Exists(WorkingDirectory))
+                {
+                    FileDirectoryOperations.DeleteDirectory(WorkingDirectory);
+                }
             }
             catch (Exception CU_EX)
             {

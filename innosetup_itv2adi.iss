@@ -5,7 +5,7 @@
 #define MyAppVersion "1.0"
 #define MyAppPublisher "SCH Tech ltd"
 #define MyAppURL "simon@schtech.co.uk"
-#define MyAppExeName "MyProg.exe"
+#define MyAppExeName "ITV2ADI_Engine.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -35,7 +35,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 
-Source: "D:\Dropbox\scripts\C#\ADI_WF_Engine\ADI_WF_Engine\bin\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "D:\Dropbox\scripts\C#\ITV2ADI_Engine\ITV2ADI_Engine\bin\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 Source: "D:\Dropbox\scripts\C#\ITV2ADI_Engine\ITV2ADI_Engine\bin\Release\INIFileParser.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\Dropbox\scripts\C#\ITV2ADI_Engine\ITV2ADI_Engine\bin\Release\INIFileParser.xml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\Dropbox\scripts\C#\ITV2ADI_Engine\ITV2ADI_Engine\bin\Release\ITV2ADI_Engine.exe"; DestDir: "{app}"; Flags: ignoreversion

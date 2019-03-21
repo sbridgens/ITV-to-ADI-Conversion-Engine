@@ -63,10 +63,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
 
                 entity.Property(e => e.Id).HasColumnName("id");
 
-                entity.Property(e => e.ContentId)
-                    .HasColumnName("Content_ID")
-                    .HasMaxLength(50);
-
                 entity.Property(e => e.IsTvod).HasColumnName("IsTVOD");
 
                 entity.Property(e => e.LicenseEndDate).HasColumnType("datetime");
@@ -81,19 +77,13 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
                     .HasColumnName("Original_ADI")
                     .HasColumnType("xml");
 
-                entity.Property(e => e.OriginalItv)
-                    .HasColumnName("Original_ITV")
-                    .HasColumnType("text");
+                entity.Property(e => e.OriginalItv).HasColumnName("Original_ITV");
 
                 entity.Property(e => e.Paid)
                     .HasColumnName("PAID")
                     .HasMaxLength(50);
 
                 entity.Property(e => e.ProcessedDateTime).HasColumnType("datetime");
-
-                entity.Property(e => e.ProductId)
-                    .HasColumnName("Product_ID")
-                    .HasMaxLength(50);
 
                 entity.Property(e => e.ProviderId).HasMaxLength(50);
 
@@ -113,9 +103,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
 
                 entity.Property(e => e.UpdatedFileName).HasMaxLength(250);
 
-                entity.Property(e => e.UpdatedItv)
-                    .HasColumnName("Updated_ITV")
-                    .HasColumnType("text");
+                entity.Property(e => e.UpdatedItv).HasColumnName("Updated_ITV");
 
                 entity.Property(e => e.UpdatedMediaChecksum).HasMaxLength(250);
             });

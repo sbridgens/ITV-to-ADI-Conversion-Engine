@@ -7,5 +7,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
     {
         public int Id { get; set; }
         public string MediaLocation { get; set; }
+        public bool DeleteFromSource { get; set; }
     }
 }
