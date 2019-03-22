@@ -105,8 +105,7 @@
     <Reference Include="Remotion.Linq, Version=2.2.0.0, Culture=neutral, PublicKeyToken=fee00910d6e5f53b, processorArchitecture=MSIL">
       <HintPath>..\packages\Remotion.Linq.2.2.0\lib\net45\Remotion.Linq.dll</HintPath>
     </Reference>
-    <Reference Include="SCH_ADI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="SCH_ADI">
       <HintPath>..\..\SCH_LIB\SCH_ADI\bin\Release\SCH_ADI.dll</HintPath>
     </Reference>
     <Reference Include="SCH_CONFIG">
@@ -256,6 +255,7 @@
     <Compile Include="ITV2ADI_Database\ProviderContentTierMapping.cs" />
     <Compile Include="ITV2ADI_Database\ReportClassMapping.cs" />
     <None Include="ITV2ADI_Workers\MappingLookup.cs.old" />
+    <Compile Include="ITV2ADI_Workers\MapITVtoADI_Properties.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">

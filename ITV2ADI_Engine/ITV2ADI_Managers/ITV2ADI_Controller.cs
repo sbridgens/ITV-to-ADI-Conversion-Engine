@@ -13,14 +13,21 @@ using SCH_QUEUE;
 namespace ITV2ADI_Engine.ITV2ADI_Managers
 {
     public class ITV2ADI_Controller
-    { /// <summary>
+    { 
+        /// <summary>
       /// Initialize Log4net
       /// </summary>
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ITV2ADI_Controller));
 
-        PollController _PollHandler;
+        /// <summary>
+        /// Declare Pollcontroller dll
+        /// </summary>
+        private PollController PollHandler;
 
-        MapITVtoADI mapping;
+        /// <summary>
+        /// Decalre MapITVtoADI Class
+        /// </summary>
+        private MapITVtoADI Mapping;
 
         /// <summary>
         /// Property: Boolean value to indicate if a method executed correctly.
@@ -77,7 +84,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
             {
                 log.Info("Service Started Successfully");
 
-                _PollHandler = new PollController();
+                PollHandler = new PollController();
                 StartITV2ADI_Engine();
             }
             else
@@ -86,6 +93,9 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
             }
         }
 
+        /// <summary>
+        /// Load and validate the application configuration
+        /// </summary>
         void LoadAppConfig()
         {
             try
@@ -102,16 +112,19 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
             }
         }
 
+        /// <summary>
+        /// Begin processing operations
+        /// </summary>
         void StartITV2ADI_Engine()
         {
             while (ITV2ADI_Config_Handler.B_IsRunning == true)
             {
-                string pollFiles = _PollHandler.StartPolling(ITV2ADI_CONFIG.InputDirectory,".itv");
+                string pollFiles = PollHandler.StartPolling(ITV2ADI_CONFIG.InputDirectory,".itv");
                 if (!string.IsNullOrEmpty(pollFiles))
                     log.Info(pollFiles);
 
 
-                if (_PollHandler.B_FilesToProcess)
+                if (PollHandler.B_FilesToProcess)
                 {
                     ProcessQueuedItems();
                 }
@@ -135,26 +148,39 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                     {
                         log.Info($"############### Processing STARTED For Queued item {q + 1} of {WF_WorkQueue.queue.Count}: {itvFile.file.Name} ###############\r\n\r\n");
 
-                        mapping = new MapITVtoADI
+                        Mapping = new MapITVtoADI
                         {
                             ITV_FILE = itvFile.file.FullName
                         };
 
-                        if (mapping.StartItvMapping())
+                        if (Mapping.StartItvMapping())
                         {
-                            log.Info($"############### Processing SUCCESSFUL For Queued file: {mapping.ITV_FILE} ###############\r\n\r\n");
+                            if(ITV2ADI_CONFIG.DeleteITVFileUponSuccess)
+                            {
+                                log.Info($"Delete source itv file upon success is true, removing source file: {itvFile.file.FullName}");
+                                File.Delete(itvFile.file.FullName);
+
+                                if(!File.Exists(itvFile.file.FullName))
+                                {
+                                    log.Info($"ITV File: {itvFile.file.FullName} successfully deleted");
+                                }
+                                else
+                                {
+                                    log.Error($"Failed to delete source ITV File: {itvFile.file.FullName}?");
+                                }
+                            }
+
+                            log.Info($"############### Processing SUCCESSFUL For Queued file: {Mapping.ITV_FILE} ###############\r\n\r\n");
+                            
                         }
                         else
                         {
-                            throw new Exception($"Failed during itv Mapping process.");
+                            throw new Exception($"Failed during itv Mapping process, check the logs for more information.");
                         }
                     }
                     catch (Exception PQI_EX)
                     {
                         log.Error($"Caught Exception during Process of Queued Items: {PQI_EX.Message}");
-
-                        if (log.IsDebugEnabled)
-                            log.Debug($"Stack Trace: {PQI_EX.StackTrace}");
                         
                         log.Info($"############### Processing FAILED For Queued file: {itvFile.file.Name} ###############\r\n\r\n");
 
@@ -162,7 +188,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                     }
                     finally
                     {
-                        mapping.CleanUp();
+                        Mapping.CleanUp();
                     }
                 }
             }

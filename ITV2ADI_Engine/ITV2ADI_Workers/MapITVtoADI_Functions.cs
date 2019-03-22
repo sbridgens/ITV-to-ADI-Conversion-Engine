@@ -11,63 +11,23 @@ using SCH_ADI;
 namespace ITV2ADI_Engine.ITV2ADI_Workers
 {
     public partial class MapITVtoADI
-    {
-        ITVConversionContext db;
-
-        ITVConversionFunctions iTVConversion;
-
-        private bool RejectIngest { get; set; }
-
-        private bool DeleteFromSource { get; set; }
-
-        private bool IsUpdate { get; set; }
-
-        private int ItvData_RowId { get; set; }
-
-        private string ProgramTitle { get; set; }
-
-        private string ProductId { get; set; }
-
-        private string AssetId { get; set; }
-
-        private string AssetType { get; set; }
-
-        private DateTime LicenseStart { get; set; }
-
-        private DateTime LicenseEnd { get; set; }
-
-        private string ProviderName { get; set; }
-
-        private string ProviderId { get; set; }
-
-        private string MediaFileName { get; set; }
-
-        private string MediaLocation { get; set; }
-
-        private string MediaChecksum { get; set; }
-
-        private DateTime Publication_Date { get; set; }
-
-        public string ActiveDate { get; set; }
-
-        public string DeactiveDate { get; set; }
-
-        private int? Version_Major { get; set; }
-
-        private bool IsTVOD { get; set; }
-        
+    {   
+        /// <summary>
+        /// Updates the ADI file AMS Sections
+        /// </summary>
+        /// <returns></returns>
         private bool SetAmsSections()
         {
             try
             {
-                _Mapping.SetAMSClass();
-                _Mapping.SetAMSPAID(ITV_Parser.Padding(_Parser.ITV_PAID), _Parser.ITV_PAID, true);
-                _Mapping.SetAMSAssetName(ProgramTitle);
-                _Mapping.SetAMSCreationDate(_Parser.GET_ITV_VALUE("Publication_Date"));
-                _Mapping.SetAMSDescription(ProgramTitle);
-                _Mapping.SetAMSProvider(ProviderName);
-                _Mapping.SetAMSProviderId(ProviderId);
-                _Mapping.SetAmsVersions(Convert.ToString(Version_Major));
+                AdiMapping.SetAMSClass();
+                AdiMapping.SetAMSPAID(ITV_Parser.Padding(ITVPaser.ITV_PAID), ITVPaser.ITV_PAID, true);
+                AdiMapping.SetAMSAssetName(ProgramTitle);
+                AdiMapping.SetAMSCreationDate(ITVPaser.GET_ITV_VALUE("Publication_Date"));
+                AdiMapping.SetAMSDescription(ProgramTitle);
+                AdiMapping.SetAMSProvider(ProviderName);
+                AdiMapping.SetAMSProviderId(ProviderId);
+                AdiMapping.SetAmsVersions(Convert.ToString(Version_Major));
                 return true;
             }
             catch (Exception AMS_EX)
@@ -80,6 +40,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
  
+        /// <summary>
+        /// Creates the Temp working directory
+        /// </summary>
+        /// <returns></returns>
         private bool CreateWorkingDirectory()
         {
             log.Info($"Creating Temp working Directory: {WorkingDirectory}");
@@ -90,20 +54,28 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             return Directory.Exists(WorkingDirectory);
         }
 
+        /// <summary>
+        /// Parses the ServiceCode itv value and determines if this product is an adult movie
+        /// </summary>
+        /// <param name="isadult"></param>
+        /// <returns></returns>
         private string ProcessServiceCode(string isadult)
         {
             IsTVOD = false;
-            string result = _Mapping.GetPricePoint(_Parser.GET_ITV_VALUE("ServiceCode"));
+            string result = AdiMapping.GetPricePoint(ITVPaser.GET_ITV_VALUE("ServiceCode"));
 
             if(!string.IsNullOrEmpty(result))
             {
                 IsTVOD = true;
-                _Mapping.SetAmsProduct(_Mapping.GetTVODProductString(result, isadult));
+                AdiMapping.SetAmsProduct(AdiMapping.GetTVODProductString(result, isadult));
             }
 
             return result;
         }
 
+        /// <summary>
+        /// Function to determine if the package is an update or full ingest
+        /// </summary>
         private void CheckUpdate()
         {
             IsUpdate = false;
@@ -111,7 +83,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
             using (ITVConversionContext uDB = new ITVConversionContext())
             {
-                var rowData = uDB.ItvConversionData.Where(p => p.Paid == _Parser.ITV_PAID)
+                var rowData = uDB.ItvConversionData.Where(p => p.Paid == ITVPaser.ITV_PAID)
                                                    .Select(pd => new
                                                     {
                                                         pd.Id,
@@ -144,6 +116,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
         
+        /// <summary>
+        /// Seeds the data early on as some parts are used for lookups / updating
+        /// Failed ingest will have the row data deleted
+        /// </summary>
         private void SeedItvData()
         {
             try
@@ -152,14 +128,14 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 {
                     seedDb.ItvConversionData.Add(new ItvConversionData
                     {
-                        Paid = _Parser.ITV_PAID,
+                        Paid = ITVPaser.ITV_PAID,
                         Title = ProgramTitle,
                         VersionMajor = Version_Major,
                         LicenseStartDate = LicenseStart,
                         LicenseEndDate = LicenseEnd,
                         ProviderName = ProviderName,
                         ProviderId = ProviderId,
-                        OriginalItv = _Parser.ITV_Data.ToString(),
+                        OriginalItv = ITVPaser.ITV_Data.ToString(),
                         MediaFileName = MediaFileName,
                         MediaFileLocation = MediaLocation,
                         ProcessedDateTime = DateTime.Now,
@@ -178,6 +154,9 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
         
+        /// <summary>
+        /// Function to update the db data upon successful parsing of the package
+        /// </summary>
         private void UpdateItvData()
         {
             try
@@ -186,24 +165,24 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 {
                     var entity = upDb.ItvConversionData.FirstOrDefault(i => i.Id == ItvData_RowId);
                     string adi = Path.Combine(WorkingDirectory, "ADI.xml");
-                    _Mapping.LoadXDocument(adi);
+                    AdiMapping.LoadXDocument(adi);
 
                     if(!IsUpdate)
                     {
                         entity.IsTvod = IsTVOD;
                         entity.IsAdult = iTVConversion.IsAdult.ToLower() == "y" ? true : false;
-                        entity.OriginalAdi = _Mapping.ADI_XDOC.ToString();
+                        entity.OriginalAdi = AdiMapping.ADI_XDOC.ToString();
                         entity.MediaFileLocation = MediaLocation;
                         entity.MediaChecksum = MediaChecksum;
                     }
                     else
                     {
                         entity.VersionMajor = Version_Major;
-                        entity.UpdateAdi = _Mapping.ADI_XDOC.ToString();
+                        entity.UpdateAdi = AdiMapping.ADI_XDOC.ToString();
                         entity.UpdatedDateTime = DateTime.Now;
                         entity.UpdatedFileLocation = MediaLocation;
                         entity.UpdatedFileName = MediaFileName;
-                        entity.UpdatedItv = _Parser.ITV_Data.ToString();
+                        entity.UpdatedItv = ITVPaser.ITV_Data.ToString();
                         entity.UpdatedMediaChecksum = MediaChecksum;
                         entity.PublicationDate = Publication_Date;
                     }
@@ -219,6 +198,163 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
 
+        /// <summary>
+        /// Function that iterates the mappings table in the database and ensures the correct adi fields
+        /// are set with the mapped data, also the valueparser dictionary allows func calls for fields that require
+        /// further parsing outside of a one to one mapping
+        /// </summary>
+        /// <returns></returns>
+        private bool SetProgramData()
+        {
+            try
+            {
+                iTVConversion = new ITVConversionFunctions();
+
+                using (db = new ITVConversionContext())
+                {
+                    iTVConversion.Db = db;
+                    bool B_IsFirst = true;
+
+                    if (!IsUpdate)
+                    {
+                        SeedItvData();
+                    }
+
+                    foreach (var entry in db.FieldMappings.OrderBy(x => x.ItvElement))
+                    {
+                        var itvValue = "";
+                        bool IsMandatoryField = entry.IsMandatoryField;
+
+                        if (B_IsFirst)
+                        {
+                            //In place to get the showtype
+                            var tmpVal = ITVPaser.GET_ITV_VALUE("ReportingClass");
+                            iTVConversion.ParseReportingClass(tmpVal, true);
+                            B_IsFirst = false;
+                        }
+
+                        var ValueParser = new Dictionary<string, Func<string>>()
+                        {
+                            { "none" , () => ITVPaser.GetNoneTypeValue(entry.ItvElement) },
+                            { "BillingId",() =>  ITV_Parser.GetBillingId(ITVPaser.ITV_PAID)},
+                            { "SummaryLong", () => AdiMapping.ConcatTitleDataXmlValues(itvValue, ITVPaser.GET_ITV_VALUE("ContentGuidance")) },
+                            { "Length", () => ITV_Parser.GetTimeSpan(entry.ItvElement, itvValue) },
+                            { "RentalTime", () => ITVPaser.GetRentalTime(entry.ItvElement,itvValue, iTVConversion.IsMovie, iTVConversion.IsAdult) },
+                            { "ReportingClass",() =>  iTVConversion.ParseReportingClass(itvValue, entry.IsTitleMetadata) },
+                            { "ServiceCode",() => ProcessServiceCode(iTVConversion.IsAdult) },
+                            { "HDContent", () => AdiMapping.SetEncodingFormat(itvValue) },
+                            { "CanBeSuspended",() =>  ITVPaser.CanBeSuspended(itvValue)},
+                            { "Language", () =>  ITV_Parser.GetISO6391LanguageCode(itvValue) },
+                            { "AnalogCopy", () => AdiMapping.CGMSMapping(itvValue) }
+                        };
+
+                        itvValue = ITVPaser.GET_ITV_VALUE(entry.ItvElement);
+
+                        if (ValueParser.ContainsKey(entry.ItvElement))
+                        {
+                            itvValue = ValueParser[entry.ItvElement]();
+                        }
+
+                        if (!string.IsNullOrEmpty(itvValue))
+                        {
+                            AdiMapping.SetOrUpdateAdiValue(entry.AdiAppType,
+                                                     entry.AdiElement,
+                                                     itvValue,
+                                                     entry.IsTitleMetadata);
+                        }
+                        else if (entry.IsMandatoryField && string.IsNullOrEmpty(itvValue))
+                        {
+                            log.Error($"Rejected: Mandatory itv Field: {entry.ItvElement} not Found in the source ITV File.");
+                            return false;
+                        }
+                    }
+
+                }
+                return true;
+            }
+            catch (Exception SPD_EX)
+            {
+                log.Error($"Failed to Map Title MetaData - {SPD_EX.Message}");
+                if (log.IsDebugEnabled)
+                    log.Debug($"STACK TRACE: {SPD_EX.StackTrace}");
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Function to update the asset metadata section
+        /// </summary>
+        /// <returns></returns>
+        private bool SetAssetData()
+        {
+            try
+            {
+                log.Info("ITV Metadata conversion completed Successfully, starting media operations");
+
+                using (ITVConversionContext mediaContext = new ITVConversionContext())
+                {
+                    MediaLocation = string.Empty;
+
+                    foreach (var location in mediaContext.MediaLocations.ToList())
+                    {
+                        string FullAssetName = Path.Combine(location.MediaLocation, MediaFileName);
+
+                        if (File.Exists(FullAssetName))
+                        {
+
+                            MediaLocation = location.MediaLocation;
+                            DeleteFromSource = location.DeleteFromSource;
+                            log.Info($"Source Media found in location: {MediaLocation} and DeleteFromSource Flag is: {DeleteFromSource}");
+                            //Change to move later on but confirm with dale
+                            log.Info($"Copying Media File: {FullAssetName} to {MediaDirectory}");
+
+                            string destFname = Path.Combine(MediaDirectory, MediaFileName);
+                            if (FileDirectoryOperations.CopyFile(FullAssetName, destFname))
+                            {
+                                log.Info($"Media file successfully copied, obtaining file hash for file: {destFname}");
+                                MediaChecksum = VideoFileProperties.GetFileHash(destFname);
+                                log.Info($"Source file Hash for {MediaFileName}: {MediaChecksum}");
+                                string fsize = VideoFileProperties.GetFileSize(destFname).ToString();
+                                log.Info($"Source file Size for {destFname}: {fsize}");
+
+                                AdiMapping.SetContent(MediaFileName);
+                                AdiMapping.SetOrUpdateAdiValue("VOD", "Content_CheckSum", MediaChecksum, false);
+                                AdiMapping.SetOrUpdateAdiValue("VOD", "Content_FileSize", fsize, false);
+                                log.Info("Media metadata and operations completed successfully.");
+                                return true;
+                            }
+                            else
+                            {
+                                throw new Exception($"File transfer of media file: {MediaFileName} failed, pre and post hashes do not match!");
+                            }
+                        }
+                    }
+
+                    if (IsUpdate && string.IsNullOrEmpty(MediaLocation))
+                    {
+                        log.Info("Update package does not have a media file, continuing with metadata package only.");
+                        return true;
+                    }
+                }
+                log.Error($"Media file: {MediaFileName} was not found in the media locations configured, failing ingest.");
+                return false;
+            }
+            catch (Exception SAD_EX)
+            {
+                log.Error($"Failed to Map Asset Data - {SAD_EX.Message}");
+                if (log.IsDebugEnabled)
+                    log.Debug($"STACK TRACE: {SAD_EX.StackTrace}");
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Final function to package and deliver to the enhancement software input directory
+        /// If the item is tvod the package is delivered with a prefix of tvod.
+        /// </summary>
+        /// <returns></returns>
         private bool PackageAndDeliverAsset()
         {
             try
@@ -268,159 +404,23 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
         
-        private bool SetProgramData()
-        {
-            try
-            {
-                iTVConversion = new ITVConversionFunctions();
-                
-                using (db = new ITVConversionContext())
-                {
-                    iTVConversion.Db = db;
-                    bool B_IsFirst = true;
-
-                    if (!IsUpdate)
-                    {
-                        SeedItvData();
-                    }
-
-                    foreach (var entry in db.FieldMappings.OrderBy(x => x.ItvElement))
-                    {
-                        var itvValue = "";
-                        bool IsMandatoryField = entry.IsMandatoryField;
-
-                        if (B_IsFirst)
-                        {
-                            //In place to get the showtype
-                            var tmpVal = _Parser.GET_ITV_VALUE("ReportingClass");
-                            iTVConversion.ParseReportingClass(tmpVal, true);
-                            B_IsFirst = false;
-                        }
-
-                        var ValueParser = new Dictionary<string, Func<string>>()
-                        {
-                            { "none" , () => _Parser.GetNoneTypeValue(entry.ItvElement) },
-                            { "BillingId",() =>  ITV_Parser.GetBillingId(_Parser.ITV_PAID)},
-                            { "SummaryLong", () => _Mapping.ConcatTitleDataXmlValues(itvValue, _Parser.GET_ITV_VALUE("ContentGuidance")) },
-                            { "Length", () => ITV_Parser.GetTimeSpan(entry.ItvElement, itvValue) },
-                            { "RentalTime", () => _Parser.GetRentalTime(entry.ItvElement,itvValue, iTVConversion.IsMovie, iTVConversion.IsAdult) },
-                            { "ReportingClass",() =>  iTVConversion.ParseReportingClass(itvValue, entry.IsTitleMetadata) },
-                            { "ServiceCode",() => ProcessServiceCode(iTVConversion.IsAdult) },
-                            { "HDContent", () => _Mapping.SetEncodingFormat(itvValue) },
-                            { "CanBeSuspended",() =>  _Parser.CanBeSuspended(itvValue)},
-                            { "Language", () =>  ITV_Parser.GetISO6391LanguageCode(itvValue) },
-                            { "AnalogCopy", () => _Mapping.CGMSMapping(itvValue) }
-                        };
-
-                        itvValue = _Parser.GET_ITV_VALUE(entry.ItvElement);
-
-                        if (ValueParser.ContainsKey(entry.ItvElement))
-                        {
-                            itvValue = ValueParser[entry.ItvElement]();
-                        }
-
-                        if (!string.IsNullOrEmpty(itvValue))
-                        {
-                            _Mapping.SetOrUpdateAdiValue(entry.AdiAppType,
-                                                     entry.AdiElement,
-                                                     itvValue,
-                                                     entry.IsTitleMetadata);
-                        }
-                        else if(entry.IsMandatoryField && string.IsNullOrEmpty(itvValue))
-                        {
-                            log.Error($"Rejected: Mandatory itv Field: {entry.ItvElement} not Found in the source ITV File.");
-                            return false;
-                        }
-                    }
-
-                }
-                return true;
-            }
-            catch (Exception SPD_EX)
-            {
-                log.Error($"Failed to Map Title MetaData - {SPD_EX.Message}");
-                if (log.IsDebugEnabled)
-                    log.Debug($"STACK TRACE: {SPD_EX.StackTrace}");
-
-                return false;
-            }
-        }
-
-        private bool SetAssetData()
-        {
-            try
-            {
-                log.Info("ITV Metadata conversion completed Successfully, starting media operations");
-
-                using (ITVConversionContext mediaContext = new ITVConversionContext())
-                {
-                    MediaLocation = string.Empty;
-
-                    foreach (var location in mediaContext.MediaLocations.ToList())
-                    {
-                        string FullAssetName = Path.Combine(location.MediaLocation, MediaFileName);
-
-                        if(File.Exists(FullAssetName))
-                        {
-                            
-                            MediaLocation = location.MediaLocation;
-                            DeleteFromSource = location.DeleteFromSource;
-                            log.Info($"Source Media found in location: {MediaLocation} and DeleteFromSource Flag is: {DeleteFromSource}");
-
-                            string destFname = Path.Combine(MediaDirectory, MediaFileName);
-                            MediaChecksum = VideoFileProperties.GetFileHash(FullAssetName);
-                            string fsize = VideoFileProperties.GetFileSize(FullAssetName).ToString();
-
-                            log.Info($"Source file Hash for {MediaFileName}: {MediaChecksum}");
-                            log.Info($"Source file Size for {MediaFileName}: {fsize}");
-
-                            _Mapping.SetContent(MediaFileName);
-                            _Mapping.SetOrUpdateAdiValue("VOD", "Content_CheckSum", MediaChecksum, false);
-                            _Mapping.SetOrUpdateAdiValue("VOD", "Content_FileSize", fsize, false);
-                            //Change to move later on but confirm with dale
-                            log.Info($"Copying Media File: {FullAssetName} to {MediaDirectory}");
-
-                            FileDirectoryOperations.CopyFile(FullAssetName, destFname);
-                            string postHash = VideoFileProperties.GetFileHash(destFname);
-
-                            if (FileDirectoryOperations.ValidateFileTransferSuccess(MediaChecksum, postHash))
-                            {
-                                log.Info("Media metadata and operations completed successfully.");
-                                return true;
-                            }
-                            else
-                            {
-                                throw new Exception($"File transfer of media file: {MediaFileName} failed, pre and post hashes do not match!");
-                            }
-                        }
-                    }
-
-                    if(IsUpdate && string.IsNullOrEmpty(MediaLocation))
-                    {
-                        log.Info("Update package does not have a media file, continuing with metadata package only.");
-                        return true;
-                    }
-                }
-                log.Error($"Media file: {MediaFileName} was not found in the media locations configured, failing ingest.");
-                return false;
-            }
-            catch(Exception SAD_EX)
-            {
-                log.Error($"Failed to Map Asset Data - {SAD_EX.Message}");
-                if (log.IsDebugEnabled)
-                    log.Debug($"STACK TRACE: {SAD_EX.StackTrace}");
-
-                return false;
-            }
-        }
-        
+        /// <summary>
+        /// removes the working directory and tmp files.
+        /// </summary>
         public void CleanUp()
         {
             try
             {
                 if(WorkingDirectory != null && Directory.Exists(WorkingDirectory))
                 {
-                    FileDirectoryOperations.DeleteDirectory(WorkingDirectory);
+                    if(FileDirectoryOperations.DeleteDirectory(WorkingDirectory))
+                    {
+                        log.Info($"Cleanup of Working directory: {WorkingDirectory} Successful");
+                    }
+                    else
+                    {
+                        throw new Exception($"Working directory was not removed, please remove manually");
+                    }
                 }
             }
             catch (Exception CU_EX)
