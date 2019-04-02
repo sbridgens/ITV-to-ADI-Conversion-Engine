@@ -6,7 +6,7 @@
   <TempWorkingDirectory>D:\itv2adi\temp</TempWorkingDirectory>
   <FailedDirectory>D:\itv2adi\failed</FailedDirectory>
   <EnrichmentDirectory>D:\Horizon4_TestDir\Input</EnrichmentDirectory>
-  <DeleteITVFileUponSuccess>fAlSe</DeleteITVFileUponSuccess>
+  <DeleteITVFileUponSuccess>TrUe</DeleteITVFileUponSuccess>
   <Database_Host>.\SQLEXPRESS</Database_Host>
   <Database_Name>ITVConversion</Database_Name>
   <Integrated_Security>True</Integrated_Security>

@@ -10,6 +10,7 @@ using ITV2ADI_Engine.ITV2ADI_Workers;
 using SCH_CONFIG;
 using SCH_QUEUE;
 
+
 namespace ITV2ADI_Engine.ITV2ADI_Managers
 {
     public class ITV2ADI_Controller
@@ -23,6 +24,8 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
         /// Declare Pollcontroller dll
         /// </summary>
         private PollController PollHandler;
+
+        private ConfigHandler<ITV2ADI_CONFIG> _Config_Handler;
 
         /// <summary>
         /// Decalre MapITVtoADI Class
@@ -80,7 +83,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
 
             log.Info("************* Service Starting **************");
             LoadAppConfig();
-            if (ITV2ADI_Config_Handler.B_IsRunning)
+            if (ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning)
             {
                 log.Info("Service Started Successfully");
 
@@ -100,15 +103,17 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
         {
             try
             {
+                _Config_Handler = new ConfigHandler<ITV2ADI_CONFIG>();
                 log.Info("Loading Application Configuration.");
-                ITV2ADI_Config_Handler.B_IsRunning = false;
-                ITV2ADI_Config_Handler.LoadApplicationConfig(Properties.Settings.Default.XmlConfigFile);
+                _Config_Handler.LoadApplicationConfig(Properties.Settings.Default.XmlConfigFile);
+                ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning = true;
             }
             catch(Exception LAC_EX)
             {
                 log.Error($"Failed loading Service configuration: {LAC_EX.Message}");
                 if (log.IsDebugEnabled)
                     log.Debug($"STACK TRACE: {LAC_EX.StackTrace}");
+                ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning = false;
             }
         }
 
@@ -117,7 +122,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
         /// </summary>
         void StartITV2ADI_Engine()
         {
-            while (ITV2ADI_Config_Handler.B_IsRunning == true)
+            while (ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning == true)
             {
                 string pollFiles = PollHandler.StartPolling(ITV2ADI_CONFIG.InputDirectory,".itv");
                 if (!string.IsNullOrEmpty(pollFiles))
@@ -155,7 +160,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
 
                         if (Mapping.StartItvMapping())
                         {
-                            if(ITV2ADI_CONFIG.DeleteITVFileUponSuccess)
+                            if(Convert.ToBoolean(ITV2ADI_CONFIG.DeleteITVFileUponSuccess))
                             {
                                 log.Info($"Delete source itv file upon success is true, removing source file: {itvFile.file.FullName}");
                                 File.Delete(itvFile.file.FullName);

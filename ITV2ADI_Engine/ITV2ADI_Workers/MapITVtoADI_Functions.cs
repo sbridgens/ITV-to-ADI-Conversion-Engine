@@ -16,7 +16,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         /// Updates the ADI file AMS Sections
         /// </summary>
         /// <returns></returns>
-        private bool SetAmsSections()
+        private bool SetAmsData()
         {
             try
             {
@@ -53,26 +53,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
             return Directory.Exists(WorkingDirectory);
         }
-
-        /// <summary>
-        /// Parses the ServiceCode itv value and determines if this product is an adult movie
-        /// </summary>
-        /// <param name="isadult"></param>
-        /// <returns></returns>
-        private string ProcessServiceCode(string isadult)
-        {
-            IsTVOD = false;
-            string result = AdiMapping.GetPricePoint(ITVPaser.GET_ITV_VALUE("ServiceCode"));
-
-            if(!string.IsNullOrEmpty(result))
-            {
-                IsTVOD = true;
-                AdiMapping.SetAmsProduct(AdiMapping.GetTVODProductString(result, isadult));
-            }
-
-            return result;
-        }
-
+        
         /// <summary>
         /// Function to determine if the package is an update or full ingest
         /// </summary>
@@ -206,21 +187,22 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         /// <returns></returns>
         private bool SetProgramData()
         {
-            try
+            iTVConversion = new ITVConversionFunctions();
+
+            using (db = new ITVConversionContext())
             {
-                iTVConversion = new ITVConversionFunctions();
+                iTVConversion.Db = db;
+                bool B_IsFirst = true;
 
-                using (db = new ITVConversionContext())
+                if (!IsUpdate)
                 {
-                    iTVConversion.Db = db;
-                    bool B_IsFirst = true;
+                    SeedItvData();
+                }
 
-                    if (!IsUpdate)
-                    {
-                        SeedItvData();
-                    }
+                foreach (var entry in db.FieldMappings.OrderBy(x => x.ItvElement))
+                {
 
-                    foreach (var entry in db.FieldMappings.OrderBy(x => x.ItvElement))
+                    try
                     {
                         var itvValue = "";
                         bool IsMandatoryField = entry.IsMandatoryField;
@@ -241,7 +223,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                             { "Length", () => ITV_Parser.GetTimeSpan(entry.ItvElement, itvValue) },
                             { "RentalTime", () => ITVPaser.GetRentalTime(entry.ItvElement,itvValue, iTVConversion.IsMovie, iTVConversion.IsAdult) },
                             { "ReportingClass",() =>  iTVConversion.ParseReportingClass(itvValue, entry.IsTitleMetadata) },
-                            { "ServiceCode",() => ProcessServiceCode(iTVConversion.IsAdult) },
+                            { "ServiceCode",() => AdiMapping.ProcessServiceCode(iTVConversion.IsAdult,  ITVPaser.GET_ITV_VALUE("ServiceCode")) },
                             { "HDContent", () => AdiMapping.SetEncodingFormat(itvValue) },
                             { "CanBeSuspended",() =>  ITVPaser.CanBeSuspended(itvValue)},
                             { "Language", () =>  ITV_Parser.GetISO6391LanguageCode(itvValue) },
@@ -268,18 +250,17 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                             return false;
                         }
                     }
+                    catch (Exception SPD_EX)
+                    {
+                        log.Error($"Failed while Mapping Title MetaData itv value: {entry.ItvElement} to Adi value: {entry.AdiElement} - {SPD_EX.Message}");
+                        if (log.IsDebugEnabled)
+                            log.Debug($"STACK TRACE: {SPD_EX.StackTrace}");
 
+                        return false;
+                    }
                 }
-                return true;
             }
-            catch (Exception SPD_EX)
-            {
-                log.Error($"Failed to Map Title MetaData - {SPD_EX.Message}");
-                if (log.IsDebugEnabled)
-                    log.Debug($"STACK TRACE: {SPD_EX.StackTrace}");
-
-                return false;
-            }
+            return true;
         }
 
         /// <summary>
@@ -302,14 +283,17 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
                         if (File.Exists(FullAssetName))
                         {
-
+                            //set media location used in later logging and calls
                             MediaLocation = location.MediaLocation;
+                            //set the bool delete from source object
                             DeleteFromSource = location.DeleteFromSource;
                             log.Info($"Source Media found in location: {MediaLocation} and DeleteFromSource Flag is: {DeleteFromSource}");
                             //Change to move later on but confirm with dale
                             log.Info($"Copying Media File: {FullAssetName} to {MediaDirectory}");
 
+                            //create the destination filename
                             string destFname = Path.Combine(MediaDirectory, MediaFileName);
+                            //Begin the file movement and file operations
                             if (FileDirectoryOperations.CopyFile(FullAssetName, destFname))
                             {
                                 log.Info($"Media file successfully copied, obtaining file hash for file: {destFname}");
@@ -359,40 +343,47 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         {
             try
             {
-                ZipHandler zipHandler = new ZipHandler();
-                string fname = IsTVOD ? $"TVOD_{WorkDirname}" : WorkDirname;
-                string package = $"{WorkingDirectory}.zip";
-                string tmpPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.tmp");
-                string finalPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.zip");
-
-                if((File.Exists(package)) || (File.Exists(tmpPackage)))
+                using (ZipHandler ziphandler = new ZipHandler())
                 {
-                    File.Delete(package);
-                    File.Delete(tmpPackage);
+                    string fname = IsTVOD ? $"TVOD_{WorkDirname}" : WorkDirname;
+                    string package = $"{WorkingDirectory}.zip";
+                    string tmpPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.tmp");
+                    string finalPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.zip");
+
+                    if ((File.Exists(package)) || (File.Exists(tmpPackage)))
+                    {
+                        File.Delete(package);
+                        File.Delete(tmpPackage);
+                    }
+                    log.Info("Starting Packaging and Delivery operations.");
+                    log.Info($"Packaging Source directory: {WorkingDirectory} to Zip Archive: {package}");
+                    ///Compress Package
+                    ziphandler.CompressPackage(WorkingDirectory, package);
+
+                    log.Info($"Zip Archive: {package} created Successfully.");
+                    log.Info($"Moving: {package} to {tmpPackage}");
+                    ///Move package to to destination as a .tmp file extension to prevent enrichment picking it up
+                    FileDirectoryOperations.MoveFile(package, tmpPackage);
+
+                    log.Info($"Successfully Moved: {package} to {tmpPackage}");
+                    log.Info($"Moving tmp Package: {tmpPackage} to {finalPackage}");
+                    ///rename the package from .tmp to .zip
+                    FileDirectoryOperations.MoveFile(tmpPackage, finalPackage);
+
+                    log.Info($"Successfully Moved: {tmpPackage} to {finalPackage}");
+                    log.Info("Updating Database with final data");
+                    ///add remaining data to the database for later use
+                    UpdateItvData();
+
+                    ///if the config value DeleteFromSource = true delete the source media
+                    if (DeleteFromSource)
+                    {
+                        FileDirectoryOperations.DeleteSourceMedia(MediaLocation, MediaFileName);
+                    }
+
+                    log.Info("Starting Packaging and Delivery operations completed Successfully.");
+                    return true;
                 }
-                log.Info("Starting Packaging and Delivery operations.");
-                log.Info($"Packaging Source directory: {WorkingDirectory} to Zip Archive: {package}");
-                zipHandler.CompressPackage(WorkingDirectory, package);
-
-                log.Info($"Zip Archive: {package} created Successfully.");
-                log.Info($"Moving: {package} to {tmpPackage}");
-                FileDirectoryOperations.MoveFile(package, tmpPackage);
-
-                log.Info($"Successfully Moved: {package} to {tmpPackage}");
-                log.Info($"Moving tmp Package: {tmpPackage} to {finalPackage}");
-                FileDirectoryOperations.MoveFile(tmpPackage, finalPackage);
-
-                log.Info($"Successfully Moved: {tmpPackage} to {finalPackage}");
-                log.Info("Updating Database with final data");
-                UpdateItvData();
-
-                if(DeleteFromSource)
-                {
-                    FileDirectoryOperations.DeleteSourceMedia(MediaLocation, MediaFileName);
-                }
-
-                log.Info("Starting Packaging and Delivery operations completed Successfully.");
-                return true;
             }
             catch(Exception PADA_EX)
             {

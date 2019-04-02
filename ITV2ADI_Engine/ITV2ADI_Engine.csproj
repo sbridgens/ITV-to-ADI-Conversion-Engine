@@ -118,7 +118,7 @@
       <HintPath>..\..\SCH_LIB\SCH_ITV\bin\Debug\SCH_ITV.dll</HintPath>
     </Reference>
     <Reference Include="SCH_QUEUE">
-      <HintPath>..\..\SCH_LIB\SCH_QUEUE\bin\Release\SCH_QUEUE.dll</HintPath>
+      <HintPath>..\..\SCH_LIB\SCH_QUEUE\obj\Debug\SCH_QUEUE.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">

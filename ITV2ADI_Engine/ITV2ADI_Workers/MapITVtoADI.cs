@@ -41,24 +41,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 return false;
             }
         }
-
-        /// <summary>
-        /// Sets the correct adi entry for the mapped itv data
-        /// </summary>
-        /// <param name="identifier">XML Attribute name typically VOD</param>
-        /// <param name="newValue">Parsed ITV Value</param>
-        /// <param name="isTitleMetadata">Boolean to indicate if this is title metadata or asset metadata</param>
-        private void SetAppDataValue(string identifier, string newValue, bool isTitleMetadata = true)
-        {
-            if (!string.IsNullOrEmpty(newValue) && isTitleMetadata)
-            {
-                AdiMapping.ADI_FILE.Asset.Metadata.App_Data.Where(x => x.Name == identifier).FirstOrDefault().Value = newValue;
-            }
-            else
-            {
-                AdiMapping.ADI_FILE.Asset.Asset.Metadata.App_Data.Where(x => x.Name == identifier).FirstOrDefault().Value = newValue;
-            }
-        }
         
         /// <summary>
         /// Function to save the New adi file
@@ -213,7 +195,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             if (!RejectIngest)
             {
                 return CreateWorkingDirectory() &&
-                       SetAmsSections() &&
+                       SetAmsData() &&
                        SetProgramData() &&
                        SetAssetData() &&
                        SaveAdiFile("ADI.xml") &&
@@ -240,28 +222,39 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             ITVPaser.ProductsComponentMappingList.Add($"{comp_keyname},{ctype}", item_keyname);
             ITVPaser.AssetSectionID = $"metadata_{comp_keyname}";
             ITVPaser.SECTION_ID = $"metadata_{item_keyname}";
-            ITVPaser.ITV_PAID = Regex.Replace(ITVPaser.GET_ITV_VALUE("ProviderAssetId"), "[A-Za-z ]", "");
+            //ITVPaser.ITV_PAID = Regex.Replace(ITVPaser.GET_ITV_VALUE("ProviderAssetId"), "[A-Za-z ]", "");
+            ITVPaser.ITV_PAID = ITVPaser.GET_ITV_VALUE("ProviderAssetId");
 
-            if(ITVPaser.IsMovieContentType())
+            if (ITVPaser.IsMovieContentType())
             {
+                ///Set the directory name for the working directory needed later during parsing as a single entity
                 WorkDirname = $"{ITVPaser.ITV_PAID}_{ DateTime.Now.ToString("yyyyMMdd-HHmm")}";
+                ///Full working directory path
                 WorkingDirectory = Path.Combine(ITV2ADI_CONFIG.TempWorkingDirectory, WorkDirname);
+                ///Media directory for placement of the required video assets
                 MediaDirectory = Path.Combine(WorkingDirectory, "media");
-
+                ///Correct program title
                 ProgramTitle = ITVPaser.GET_ITV_VALUE("Title");
+                ///Correct ITV Product ID
                 ProductId = item_keyname;
+                ///Correct ITV Asset ide
                 AssetId = comp_keyname;
+                ///License start and end date required for mapping and requires a particular format
                 LicenseStart = Convert.ToDateTime(ITVPaser.GET_ITV_VALUE("ActivateTime"));
                 LicenseEnd = Convert.ToDateTime(ITVPaser.GET_ITV_VALUE("DeactivateTime"));
+                ///Provider Name and ID for use in mapping and logging
                 ProviderName = ITVPaser.GET_ITV_VALUE("Provider");
                 ProviderId = ITVPaser.GET_ITV_VALUE("ProviderId");
+                ///Publication data required to determine if the package is an update or initial ingest
                 Publication_Date = Convert.ToDateTime(ITVPaser.GET_ITV_VALUE("Publication_Date"));
-
+                ///Physical asset file name
                 MediaFileName = ITVPaser.GET_ASSET_DATA("FileName");
+                ///Physical asset active date
                 ActiveDate = ITVPaser.GET_ASSET_DATA("ActiveDate");
+                ///physical asset deactive date
                 DeactiveDate = ITVPaser.GET_ASSET_DATA("DeactiveDate");
 
-                if ((string.IsNullOrEmpty(ActiveDate)) || string.IsNullOrEmpty(DeactiveDate))
+                if ((string.IsNullOrEmpty(ActiveDate)) || (string.IsNullOrEmpty(DeactiveDate)))
                 {
                     log.Error($"Rejected: Source ITV does not contain one of the following mandatory fields: ActiveData, DeactiveDate at asset level");
                     return false;
