@@ -144,7 +144,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             {
                 using (ITVConversionContext upDb = new ITVConversionContext())
                 {
-                    var entity = upDb.ItvConversionData.FirstOrDefault(i => i.Id == ItvData_RowId);
+                    ItvConversionData entity = upDb.ItvConversionData.FirstOrDefault(i => i.Id == ItvData_RowId);
                     string adi = Path.Combine(WorkingDirectory, "ADI.xml");
                     AdiMapping.LoadXDocument(adi);
 
@@ -179,6 +179,18 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
 
+        private void SetAdiAssetId(bool isTitleMetadata)
+        {
+            if (isTitleMetadata)
+            {
+                AdiMapping.Asset_ID = AdiMapping.ADI_FILE.Asset.Metadata.AMS.Asset_ID;
+            }
+            else
+            {
+                AdiMapping.Asset_ID = AdiMapping.ADI_FILE.Asset.Asset.FirstOrDefault().Metadata.AMS.Asset_ID;
+            }
+        }
+
         /// <summary>
         /// Function that iterates the mappings table in the database and ensures the correct adi fields
         /// are set with the mapped data, also the valueparser dictionary allows func calls for fields that require
@@ -199,23 +211,25 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     SeedItvData();
                 }
 
+                
                 foreach (var entry in db.FieldMappings.OrderBy(x => x.ItvElement))
                 {
 
                     try
                     {
-                        var itvValue = "";
+                        string itvValue = "";
                         bool IsMandatoryField = entry.IsMandatoryField;
+                        SetAdiAssetId(entry.IsTitleMetadata);
 
                         if (B_IsFirst)
                         {
                             //In place to get the showtype
-                            var tmpVal = ITVPaser.GET_ITV_VALUE("ReportingClass");
+                            string tmpVal = ITVPaser.GET_ITV_VALUE("ReportingClass");
                             iTVConversion.ParseReportingClass(tmpVal, true);
                             B_IsFirst = false;
                         }
 
-                        var ValueParser = new Dictionary<string, Func<string>>()
+                        Dictionary<string, Func<string>> ValueParser = new Dictionary<string, Func<string>>()
                         {
                             { "none" , () => ITVPaser.GetNoneTypeValue(entry.ItvElement) },
                             { "BillingId",() =>  ITV_Parser.GetBillingId(ITVPaser.ITV_PAID)},
@@ -229,12 +243,14 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                             { "Language", () =>  ITV_Parser.GetISO6391LanguageCode(itvValue) },
                             { "AnalogCopy", () => AdiMapping.CGMSMapping(itvValue) }
                         };
-
-                        itvValue = ITVPaser.GET_ITV_VALUE(entry.ItvElement);
-
+                        
                         if (ValueParser.ContainsKey(entry.ItvElement))
                         {
                             itvValue = ValueParser[entry.ItvElement]();
+                        }
+                        else
+                        {
+                            itvValue = ITVPaser.GET_ITV_VALUE(entry.ItvElement);
                         }
 
                         if (!string.IsNullOrEmpty(itvValue))
@@ -301,10 +317,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                                 log.Info($"Source file Hash for {MediaFileName}: {MediaChecksum}");
                                 string fsize = VideoFileProperties.GetFileSize(destFname).ToString();
                                 log.Info($"Source file Size for {destFname}: {fsize}");
-
+                                AdiMapping.Asset_ID = AdiMapping.ADI_FILE.Asset.Asset.FirstOrDefault().Metadata.AMS.Asset_ID;
                                 AdiMapping.SetContent(MediaFileName);
                                 AdiMapping.SetOrUpdateAdiValue("VOD", "Content_CheckSum", MediaChecksum, false);
-                                AdiMapping.SetOrUpdateAdiValue("VOD", "Content_FileSize", fsize, false);
+                                AdiMapping.SetOrUpdateAdiValue("VOD", "Content_FileSize", fsize,false);
                                 log.Info("Media metadata and operations completed successfully.");
                                 return true;
                             }
@@ -398,7 +414,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         /// <summary>
         /// removes the working directory and tmp files.
         /// </summary>
-        public void CleanUp()
+        public void CleanUp(bool IsSuccess)
         {
             try
             {
@@ -412,6 +428,13 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     {
                         throw new Exception($"Working directory was not removed, please remove manually");
                     }
+                }
+                if(!IsSuccess)
+                {
+                    string FailedDir = $"{Path.Combine(ITV2ADI_CONFIG.FailedDirectory,Path.GetFileNameWithoutExtension(ITV_FILE))}";
+                    Directory.CreateDirectory(FailedDir);
+                    log.Info($"Moving Failed ITV Source file to Failed Directory: {FailedDir}");
+                    FileDirectoryOperations.MoveFile(ITV_FILE, FailedDir);
                 }
             }
             catch (Exception CU_EX)

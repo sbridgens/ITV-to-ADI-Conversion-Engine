@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ITV2ADI_Engine.ITV2ADI_Workers;
 using SCH_CONFIG;
+using SCH_IO;
 using SCH_QUEUE;
 
 
@@ -133,8 +134,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                 {
                     ProcessQueuedItems();
                 }
-
-                Thread.Sleep(Convert.ToInt32(ITV2ADI_CONFIG.PollIntervalInSeconds) * 1000);
+                if (ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning)
+                {
+                    Thread.Sleep(Convert.ToInt32(ITV2ADI_CONFIG.PollIntervalInSeconds) * 1000);
+                }
             }
         }
 
@@ -145,55 +148,65 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
         {
             if(WF_WorkQueue.queue.Count >= 1)
             {
+                Drive_Info drive_Info = new Drive_Info();
                 for (int q = 0; q < WF_WorkQueue.queue.Count; q++)
                 {
-                    WorkQueueItem itvFile = (WorkQueueItem)WF_WorkQueue.queue[q];
-
-                    try
+                    ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning = drive_Info.GetDriveSpace();
+                    if(ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning)
                     {
-                        log.Info($"############### Processing STARTED For Queued item {q + 1} of {WF_WorkQueue.queue.Count}: {itvFile.file.Name} ###############\r\n\r\n");
+                        WorkQueueItem itvFile = (WorkQueueItem)WF_WorkQueue.queue[q];
 
-                        Mapping = new MapITVtoADI
+                        try
                         {
-                            ITV_FILE = itvFile.file.FullName
-                        };
+                            log.Info($"############### Processing STARTED For Queued item {q + 1} of {WF_WorkQueue.queue.Count}: {itvFile.file.Name} ###############\r\n\r\n");
 
-                        if (Mapping.StartItvMapping())
-                        {
-                            if(Convert.ToBoolean(ITV2ADI_CONFIG.DeleteITVFileUponSuccess))
+                            Mapping = new MapITVtoADI
                             {
-                                log.Info($"Delete source itv file upon success is true, removing source file: {itvFile.file.FullName}");
-                                File.Delete(itvFile.file.FullName);
+                                ITV_FILE = itvFile.file.FullName
+                            };
 
-                                if(!File.Exists(itvFile.file.FullName))
+                            if (Mapping.StartItvMapping())
+                            {
+                                B_IsSuccess = true;
+                                if (Convert.ToBoolean(ITV2ADI_CONFIG.DeleteITVFileUponSuccess))
                                 {
-                                    log.Info($"ITV File: {itvFile.file.FullName} successfully deleted");
+                                    log.Info($"Delete source itv file upon success is true, removing source file: {itvFile.file.FullName}");
+                                    File.Delete(itvFile.file.FullName);
+
+                                    if (!File.Exists(itvFile.file.FullName))
+                                    {
+                                        log.Info($"ITV File: {itvFile.file.FullName} successfully deleted");
+                                    }
+                                    else
+                                    {
+                                        log.Error($"Failed to delete source ITV File: {itvFile.file.FullName}?");
+                                    }
                                 }
-                                else
-                                {
-                                    log.Error($"Failed to delete source ITV File: {itvFile.file.FullName}?");
-                                }
+
+                                log.Info($"############### Processing SUCCESSFUL For Queued file: {Mapping.ITV_FILE} ###############\r\n\r\n");
+
                             }
-
-                            log.Info($"############### Processing SUCCESSFUL For Queued file: {Mapping.ITV_FILE} ###############\r\n\r\n");
-                            
+                            else
+                            {
+                                throw new Exception($"Failed during itv Mapping process, check the logs for more information.");
+                            }
                         }
-                        else
+                        catch (Exception PQI_EX)
                         {
-                            throw new Exception($"Failed during itv Mapping process, check the logs for more information.");
+                            log.Error($"Caught Exception during Process of Queued Items: {PQI_EX.Message}");
+
+                            log.Info($"############### Processing FAILED For Queued file: {itvFile.file.Name} ###############\r\n\r\n");
+                            B_IsSuccess = false;
+                            continue;
+                        }
+                        finally
+                        {
+                            Mapping.CleanUp(B_IsSuccess);
                         }
                     }
-                    catch (Exception PQI_EX)
+                    else
                     {
-                        log.Error($"Caught Exception during Process of Queued Items: {PQI_EX.Message}");
-                        
-                        log.Info($"############### Processing FAILED For Queued file: {itvFile.file.Name} ###############\r\n\r\n");
-
-                        continue;
-                    }
-                    finally
-                    {
-                        Mapping.CleanUp();
+                        break;
                     }
                 }
             }
