@@ -13,7 +13,9 @@ using ITV2ADI_Engine.ITV2ADI_Database;
 namespace ITV2ADI_Engine.ITV2ADI_Workers
 {
     public partial class MapITVtoADI
-    {   
+    {
+        
+        public bool ItvFailure { get; set; }
         /// <summary>
         /// Returns True or False dependant on conversion of the itv file
         /// </summary>
@@ -22,6 +24,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         {
             try
             {
+                ItvFailure = false;
                 B_IsSuccess = false;
                 log.Info("Loading and parsing itv File");
                 ITVPaser = new ITV_Parser();
@@ -51,6 +54,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         {
             try
             {
+                if (IsUpdate)
+                {
+                    AdiMapping.RemoveUpdateAssetSection();
+                }
                 AdiMapping.SaveAdi(Path.Combine(WorkingDirectory, AdiFileName));
                 return true;
             }
@@ -92,11 +99,8 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         {
                             log.Error($"Caught Exception during Process of Product ID {item.KeyName}: {ProcessProductEx.Message}\r\n");
 
-                            if (log.IsDebugEnabled)
-                                log.Debug($"Stack Trace: {ProcessProductEx.StackTrace}");
-
                             log.Error($"############### Packaging FAILED For Product ID: {item.KeyName} ###############\r\n");
-                            continue;
+                            break; 
                         }
                     }
                 }
@@ -133,18 +137,19 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         if (StartProcessing())
                         {
                             B_IsSuccess = true;
+                            CleanUp();
                             log.Info($"All operations completed Successfully, removing temporary Files/Directories for PAID: {ITVPaser.ITV_PAID}");
                             log.Info($"***************Packaging FINISHED For PAID: { ITVPaser.ITV_PAID}, Program name: {programName} ***************\r\n");
                         }
                         else
                         {
                             log.Error("Failed during Conversion Process, the relevant error should be logged above for the problem area, check logs for errors and rectify.");
+                            FileDirectoryOperations.ProcessITVFailure(ITV2ADI_CONFIG.FailedDirectory, WorkDirname, ITV_FILE);
+                            ItvFailure = true;
 
-                            if(Directory.Exists(WorkingDirectory))
+                            if (Directory.Exists(WorkingDirectory))
                             {
-                                log.Info($"Removing Temp working directory: {WorkingDirectory}");
-                                FileDirectoryOperations.DeleteDirectory(WorkingDirectory);
-                                FileDirectoryOperations.ProcessITVFailure(ITV2ADI_CONFIG.FailedDirectory, WorkDirname, ITV_FILE);
+                                CleanUp();
                             }
 
                             if(ItvData_RowId > 0)
@@ -152,8 +157,11 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                                 using (ITVConversionContext db = new ITVConversionContext())
                                 {
                                     var rData = db.ItvConversionData.Where(i => i.Id == ItvData_RowId).FirstOrDefault();
-                                    db.Remove(rData);
-                                    db.SaveChanges();
+                                    if(rData != null)
+                                    {
+                                        db.Remove(rData);
+                                        db.SaveChanges();
+                                    }
                                 }
                             }
                             B_IsSuccess = false;
@@ -196,8 +204,8 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             {
                 return CreateWorkingDirectory() &&
                        SetAmsData() &&
-                       SetProgramData() &&
                        SetAssetData() &&
+                       SetProgramData() &&
                        SaveAdiFile("ADI.xml") &&
                        PackageAndDeliverAsset();
             }
@@ -225,35 +233,36 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             //ITVPaser.ITV_PAID = Regex.Replace(ITVPaser.GET_ITV_VALUE("ProviderAssetId"), "[A-Za-z ]", "");
             ITVPaser.ITV_PAID = ITVPaser.GET_ITV_VALUE("ProviderAssetId");
 
-            if (ITVPaser.IsMovieContentType())
-            {
-                ///Set the directory name for the working directory needed later during parsing as a single entity
-                WorkDirname = $"{ITVPaser.ITV_PAID}_{ DateTime.Now.ToString("yyyyMMdd-HHmm")}";
-                ///Full working directory path
-                WorkingDirectory = Path.Combine(ITV2ADI_CONFIG.TempWorkingDirectory, WorkDirname);
-                ///Media directory for placement of the required video assets
-                MediaDirectory = Path.Combine(WorkingDirectory, "media");
-                ///Correct program title
-                ProgramTitle = ITVPaser.GET_ITV_VALUE("Title");
-                ///Correct ITV Product ID
-                ProductId = item_keyname;
-                ///Correct ITV Asset ide
-                AssetId = comp_keyname;
-                ///License start and end date required for mapping and requires a particular format
-                LicenseStart = Convert.ToDateTime(ITVPaser.GET_ITV_VALUE("ActivateTime"));
-                LicenseEnd = Convert.ToDateTime(ITVPaser.GET_ITV_VALUE("DeactivateTime"));
-                ///Provider Name and ID for use in mapping and logging
-                ProviderName = ITVPaser.GET_ITV_VALUE("Provider");
-                ProviderId = ITVPaser.GET_ITV_VALUE("ProviderId");
-                ///Publication data required to determine if the package is an update or initial ingest
-                Publication_Date = Convert.ToDateTime(ITVPaser.GET_ITV_VALUE("Publication_Date"));
-                ///Physical asset file name
-                MediaFileName = ITVPaser.GET_ASSET_DATA("FileName");
-                ///Physical asset active date
-                ActiveDate = ITVPaser.GET_ASSET_DATA("ActiveDate");
-                ///physical asset deactive date
-                DeactiveDate = ITVPaser.GET_ASSET_DATA("DeactiveDate");
 
+            ///Set the directory name for the working directory needed later during parsing as a single entity
+            WorkDirname = $"{ITVPaser.ITV_PAID}_{ DateTime.Now.ToString("yyyyMMdd-HHmm")}";
+            ///Full working directory path
+            WorkingDirectory = Path.Combine(ITV2ADI_CONFIG.TempWorkingDirectory, WorkDirname);
+            ///Media directory for placement of the required video assets
+            MediaDirectory = Path.Combine(WorkingDirectory, "media");
+            ///Correct program title
+            ProgramTitle = ITVPaser.GET_ITV_VALUE("Title");
+            ///Correct ITV Product ID
+            ProductId = item_keyname;
+            ///Correct ITV Asset ide
+            AssetId = comp_keyname;
+            ///License start and end date required for mapping and requires a particular format
+            LicenseStart = Convert.ToDateTime(ITVPaser.GET_ITV_VALUE("ActivateTime"));
+            LicenseEnd = Convert.ToDateTime(ITVPaser.GET_ITV_VALUE("DeactivateTime"));
+            ///Provider Name and ID for use in mapping and logging
+            ProviderName = ITVPaser.GET_ITV_VALUE("Provider");
+            ProviderId = ITVPaser.GET_ITV_VALUE("ProviderId");
+            ///Publication data required to determine if the package is an update or initial ingest
+            Publication_Date = Convert.ToDateTime(ITVPaser.GET_ITV_VALUE("Publication_Date"));
+            ///Physical asset file name
+            MediaFileName = ITVPaser.GET_ASSET_DATA("FileName");
+            ///Physical asset active date
+            ActiveDate = ITVPaser.GET_ASSET_DATA("ActiveDate");
+            ///physical asset deactive date
+            DeactiveDate = ITVPaser.GET_ASSET_DATA("DeactiveDate");
+
+            if(ITVPaser.IsMovieContentType())
+            {
                 if ((string.IsNullOrEmpty(ActiveDate)) || (string.IsNullOrEmpty(DeactiveDate)))
                 {
                     log.Error($"Rejected: Source ITV does not contain one of the following mandatory fields: ActiveData, DeactiveDate at asset level");

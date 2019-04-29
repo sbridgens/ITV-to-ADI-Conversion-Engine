@@ -11,7 +11,8 @@ using SCH_ADI;
 namespace ITV2ADI_Engine.ITV2ADI_Workers
 {
     public partial class MapITVtoADI
-    {   
+    {
+        private string FullAssetName { get; set; }
         /// <summary>
         /// Updates the ADI file AMS Sections
         /// </summary>
@@ -48,8 +49,13 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         {
             log.Info($"Creating Temp working Directory: {WorkingDirectory}");
             FileDirectoryOperations.CreateDirectory(WorkingDirectory);
-            log.Info($"Creating Media Directory: {MediaDirectory}");
-            FileDirectoryOperations.CreateDirectory(MediaDirectory);
+
+            if(!IsUpdate)
+            {
+                ///need to avoid this for updates!
+                log.Info($"Creating Media Directory: {MediaDirectory}");
+                FileDirectoryOperations.CreateDirectory(MediaDirectory);
+            }
 
             return Directory.Exists(WorkingDirectory);
         }
@@ -80,6 +86,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         log.Info("Package detected as an Update.");
                         ItvData_RowId = rowData.Id;
                         Version_Major = rowData.VersionMajor +1;
+                        log.Info($"Existing Version Major: {rowData.VersionMajor} Updated Version Major: {Version_Major}");
                         IsUpdate = true;
                         return;
                     }
@@ -148,10 +155,12 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     string adi = Path.Combine(WorkingDirectory, "ADI.xml");
                     AdiMapping.LoadXDocument(adi);
 
-                    if(!IsUpdate)
+                    entity.IsTvod = AdiMapping.IsTVOD;
+                    entity.IsAdult = iTVConversion.IsAdult.ToLower() == "y" ? true : false;
+                    entity.PublicationDate = Publication_Date;
+
+                    if (!IsUpdate)
                     {
-                        entity.IsTvod = IsTVOD;
-                        entity.IsAdult = iTVConversion.IsAdult.ToLower() == "y" ? true : false;
                         entity.OriginalAdi = AdiMapping.ADI_XDOC.ToString();
                         entity.MediaFileLocation = MediaLocation;
                         entity.MediaChecksum = MediaChecksum;
@@ -161,11 +170,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         entity.VersionMajor = Version_Major;
                         entity.UpdateAdi = AdiMapping.ADI_XDOC.ToString();
                         entity.UpdatedDateTime = DateTime.Now;
-                        entity.UpdatedFileLocation = MediaLocation;
-                        entity.UpdatedFileName = MediaFileName;
+                        //entity.UpdatedFileLocation = MediaLocation;
+                        //entity.UpdatedFileName = MediaFileName;
                         entity.UpdatedItv = ITVPaser.ITV_Data.ToString();
-                        entity.UpdatedMediaChecksum = MediaChecksum;
-                        entity.PublicationDate = Publication_Date;
+                        //entity.UpdatedMediaChecksum = MediaChecksum;
                     }
 
                     int count = upDb.SaveChanges();
@@ -234,7 +242,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                             { "none" , () => ITVPaser.GetNoneTypeValue(entry.ItvElement) },
                             { "BillingId",() =>  ITV_Parser.GetBillingId(ITVPaser.ITV_PAID)},
                             { "SummaryLong", () => AdiMapping.ConcatTitleDataXmlValues(itvValue, ITVPaser.GET_ITV_VALUE("ContentGuidance")) },
-                            { "Length", () => ITV_Parser.GetTimeSpan(entry.ItvElement, itvValue) },
+                            { "Length", () => VideoFileProperties.GetMediaInfoDuration(FullAssetName, IsUpdate) },
                             { "RentalTime", () => ITVPaser.GetRentalTime(entry.ItvElement,itvValue, iTVConversion.IsMovie, iTVConversion.IsAdult) },
                             { "ReportingClass",() =>  iTVConversion.ParseReportingClass(itvValue, entry.IsTitleMetadata) },
                             { "ServiceCode",() => AdiMapping.ProcessServiceCode(iTVConversion.IsAdult,  ITVPaser.GET_ITV_VALUE("ServiceCode")) },
@@ -243,14 +251,13 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                             { "Language", () =>  ITV_Parser.GetISO6391LanguageCode(itvValue) },
                             { "AnalogCopy", () => AdiMapping.CGMSMapping(itvValue) }
                         };
-                        
+                        //ITV_Parser.GetTimeSpan(entry.ItvElement, itvValue) },
+                        //set initially otherwise we end up with a null reference.
+                        itvValue = ITVPaser.GET_ITV_VALUE(entry.ItvElement);
+
                         if (ValueParser.ContainsKey(entry.ItvElement))
                         {
                             itvValue = ValueParser[entry.ItvElement]();
-                        }
-                        else
-                        {
-                            itvValue = ITVPaser.GET_ITV_VALUE(entry.ItvElement);
                         }
 
                         if (!string.IsNullOrEmpty(itvValue))
@@ -287,58 +294,73 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         {
             try
             {
-                log.Info("ITV Metadata conversion completed Successfully, starting media operations");
-
-                using (ITVConversionContext mediaContext = new ITVConversionContext())
+                if(!IsUpdate)
                 {
-                    MediaLocation = string.Empty;
+                    log.Info("ITV Metadata conversion completed Successfully, starting media operations");
 
-                    foreach (var location in mediaContext.MediaLocations.ToList())
+                    using (ITVConversionContext mediaContext = new ITVConversionContext())
                     {
-                        string FullAssetName = Path.Combine(location.MediaLocation, MediaFileName);
+                        MediaLocation = string.Empty;
 
-                        if (File.Exists(FullAssetName))
+                        foreach (var location in mediaContext.MediaLocations.ToList())
                         {
-                            //set media location used in later logging and calls
-                            MediaLocation = location.MediaLocation;
-                            //set the bool delete from source object
-                            DeleteFromSource = location.DeleteFromSource;
-                            log.Info($"Source Media found in location: {MediaLocation} and DeleteFromSource Flag is: {DeleteFromSource}");
-                            //Change to move later on but confirm with dale
-                            log.Info($"Copying Media File: {FullAssetName} to {MediaDirectory}");
+                            FullAssetName = Path.Combine(location.MediaLocation, MediaFileName);
 
-                            //create the destination filename
-                            string destFname = Path.Combine(MediaDirectory, MediaFileName);
-                            //Begin the file movement and file operations
-                            if (FileDirectoryOperations.CopyFile(FullAssetName, destFname))
+                            if (File.Exists(FullAssetName))
                             {
-                                log.Info($"Media file successfully copied, obtaining file hash for file: {destFname}");
-                                MediaChecksum = VideoFileProperties.GetFileHash(destFname);
-                                log.Info($"Source file Hash for {MediaFileName}: {MediaChecksum}");
-                                string fsize = VideoFileProperties.GetFileSize(destFname).ToString();
-                                log.Info($"Source file Size for {destFname}: {fsize}");
-                                AdiMapping.Asset_ID = AdiMapping.ADI_FILE.Asset.Asset.FirstOrDefault().Metadata.AMS.Asset_ID;
-                                AdiMapping.SetContent(MediaFileName);
-                                AdiMapping.SetOrUpdateAdiValue("VOD", "Content_CheckSum", MediaChecksum, false);
-                                AdiMapping.SetOrUpdateAdiValue("VOD", "Content_FileSize", fsize,false);
-                                log.Info("Media metadata and operations completed successfully.");
-                                return true;
-                            }
-                            else
-                            {
-                                throw new Exception($"File transfer of media file: {MediaFileName} failed, pre and post hashes do not match!");
+                                //set media location used in later logging and calls
+                                MediaLocation = location.MediaLocation;
+                                //set the bool delete from source object
+                                DeleteFromSource = location.DeleteFromSource;
+                                log.Info($"Source Media found in location: {MediaLocation} and DeleteFromSource Flag is: {DeleteFromSource}");
+                                //Change to move later on but confirm with dale
+                                log.Info($"Copying Media File: {FullAssetName} to {MediaDirectory}");
+
+                                //create the destination filename
+                                string destFname = Path.Combine(MediaDirectory, MediaFileName);
+                                //Begin the file movement and file operations
+                                if (FileDirectoryOperations.CopyFile(FullAssetName, destFname))
+                                {
+                                    log.Info($"Media file successfully copied, obtaining file hash for file: {destFname}");
+                                    MediaChecksum = VideoFileProperties.GetFileHash(destFname);
+                                    log.Info($"Source file Hash for {MediaFileName}: {MediaChecksum}");
+                                    string fsize = VideoFileProperties.GetFileSize(destFname).ToString();
+                                    log.Info($"Source file Size for {destFname}: {fsize}");
+                                    AdiMapping.Asset_ID = AdiMapping.ADI_FILE.Asset.Asset.FirstOrDefault().Metadata.AMS.Asset_ID;
+                                    AdiMapping.SetContent("\\media");
+                                    AdiMapping.SetOrUpdateAdiValue("VOD", "Content_CheckSum", MediaChecksum, false);
+                                    AdiMapping.SetOrUpdateAdiValue("VOD", "Content_FileSize", fsize, false);
+                                    bool blockPlatform = Convert.ToBoolean(ITV2ADI_CONFIG.BlockQamContentOnOTT);
+                                    log.Info($"Block platform flag = {blockPlatform}");
+                                    if(blockPlatform)
+                                    {
+                                        log.Info($"Adding Block_Platform flag with a value of BLOCK_OTT to media metadata section.");
+                                        AdiMapping.SetOrUpdateAdiValue("VOD", "Block_Platform", "BLOCK_OTT", false);
+                                    }
+
+                                    log.Info("Media metadata and operations completed successfully.");
+                                    return true;
+                                }
+                                else
+                                {
+                                    throw new Exception($"File transfer of media file: {MediaFileName} failed, pre and post hashes do not match!");
+                                }
                             }
                         }
-                    }
 
-                    if (IsUpdate && string.IsNullOrEmpty(MediaLocation))
-                    {
-                        log.Info("Update package does not have a media file, continuing with metadata package only.");
-                        return true;
+                        if (IsUpdate && string.IsNullOrEmpty(MediaLocation))
+                        {
+                            log.Info("Update package does not have a media file, continuing with metadata package only.");
+                            return true;
+                        }
                     }
+                    log.Error($"Media file: {MediaFileName} was not found in the media locations configured, failing ingest.");
+                    return false;
                 }
-                log.Error($"Media file: {MediaFileName} was not found in the media locations configured, failing ingest.");
-                return false;
+                else
+                {
+                    return true;
+                }
             }
             catch (Exception SAD_EX)
             {
@@ -361,7 +383,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             {
                 using (ZipHandler ziphandler = new ZipHandler())
                 {
-                    string fname = IsTVOD ? $"TVOD_{WorkDirname}" : WorkDirname;
+                    string fname = WorkDirname;
                     string package = $"{WorkingDirectory}.zip";
                     string tmpPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.tmp");
                     string finalPackage = Path.Combine(ITV2ADI_CONFIG.EnrichmentDirectory, $"{fname}.zip");
@@ -371,6 +393,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         File.Delete(package);
                         File.Delete(tmpPackage);
                     }
+                    
                     log.Info("Starting Packaging and Delivery operations.");
                     log.Info($"Packaging Source directory: {WorkingDirectory} to Zip Archive: {package}");
                     ///Compress Package
@@ -414,27 +437,28 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         /// <summary>
         /// removes the working directory and tmp files.
         /// </summary>
-        public void CleanUp(bool IsSuccess)
+        public void CleanUp()
         {
             try
             {
-                if(WorkingDirectory != null && Directory.Exists(WorkingDirectory))
+                if(Directory.Exists(WorkingDirectory))
                 {
-                    if(FileDirectoryOperations.DeleteDirectory(WorkingDirectory))
+                    log.Info($"Removing temp working directory: {WorkingDirectory}");
+
+                    if (FileDirectoryOperations.DeleteDirectory(WorkingDirectory))
                     {
-                        log.Info($"Cleanup of Working directory: {WorkingDirectory} Successful");
+                        DirectoryInfo directoryInfo = new DirectoryInfo(ITV2ADI_CONFIG.TempWorkingDirectory);
+                        foreach (var file in directoryInfo.GetFiles("*.*"))
+                        {
+                            File.Delete(file.FullName);
+                        }
+
+                        log.Info($"Cleanup of Temp directory: {ITV2ADI_CONFIG.TempWorkingDirectory} Successful");
                     }
                     else
                     {
-                        throw new Exception($"Working directory was not removed, please remove manually");
+                        throw new Exception($"Temp Working Directory/File(s) were not removed, please remove manually");
                     }
-                }
-                if(!IsSuccess)
-                {
-                    string FailedDir = $"{Path.Combine(ITV2ADI_CONFIG.FailedDirectory,Path.GetFileNameWithoutExtension(ITV_FILE))}";
-                    Directory.CreateDirectory(FailedDir);
-                    log.Info($"Moving Failed ITV Source file to Failed Directory: {FailedDir}");
-                    FileDirectoryOperations.MoveFile(ITV_FILE, FailedDir);
                 }
             }
             catch (Exception CU_EX)

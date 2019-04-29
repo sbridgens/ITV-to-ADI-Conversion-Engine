@@ -1,30 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using ITV2ADI_Engine.ITV2ADI_Database;
 using ITV2ADI_Engine.ITV2ADI_Workers;
 using SCH_CONFIG;
 using SCH_IO;
 using SCH_QUEUE;
+using System;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Timers;
 
 
 namespace ITV2ADI_Engine.ITV2ADI_Managers
 {
     public class ITV2ADI_Controller
-    { 
+    {
         /// <summary>
-      /// Initialize Log4net
-      /// </summary>
+        /// Initialize Log4net
+        /// </summary>
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ITV2ADI_Controller));
 
         /// <summary>
         /// Declare Pollcontroller dll
         /// </summary>
         private PollController PollHandler;
+
+        private System.Timers.Timer _Timer;
+
+        private bool IsProcessing { get; set; }
 
         private ConfigHandler<ITV2ADI_CONFIG> _Config_Handler;
 
@@ -109,7 +112,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                 _Config_Handler.LoadApplicationConfig(Properties.Settings.Default.XmlConfigFile);
                 ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning = true;
             }
-            catch(Exception LAC_EX)
+            catch (Exception LAC_EX)
             {
                 log.Error($"Failed loading Service configuration: {LAC_EX.Message}");
                 if (log.IsDebugEnabled)
@@ -123,20 +126,69 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
         /// </summary>
         void StartITV2ADI_Engine()
         {
+            _Timer = new System.Timers.Timer(Convert.ToInt32(ITV2ADI_CONFIG.ExpiredAssetCleanupIntervalHours) * 60 * 60 * 1000);
+            _Timer.Elapsed += new ElapsedEventHandler(ElapsedTime);
+            _Timer.Start();
+            ///fire on startup.
+            ElapsedTime(IsProcessing, null);
+
             while (ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning == true)
             {
-                string pollFiles = PollHandler.StartPolling(ITV2ADI_CONFIG.InputDirectory,".itv");
+                string pollFiles = PollHandler.StartPolling(ITV2ADI_CONFIG.InputDirectory, ".itv");
                 if (!string.IsNullOrEmpty(pollFiles))
                     log.Info(pollFiles);
 
 
                 if (PollHandler.B_FilesToProcess)
                 {
+                    IsProcessing = false;
                     ProcessQueuedItems();
                 }
                 if (ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning)
                 {
                     Thread.Sleep(Convert.ToInt32(ITV2ADI_CONFIG.PollIntervalInSeconds) * 1000);
+                }
+
+            }
+        }
+
+        /// <summary>
+        /// Timer Event for cleanup, flags a boolean in case there is processing underway
+        /// allowing the clean up to occur post processing
+        /// </summary>
+        /// <param name="src"></param>
+        /// <param name="e"></param>
+        private void ElapsedTime(object src, ElapsedEventArgs e)
+        {
+            if (!IsProcessing)
+            {
+                using (ITVConversionContext db = new ITVConversionContext())
+                {
+                    log.Info("Checking for expired data in the ITV Conversion db");
+                    var rowData = db.ItvConversionData.Where(le => Convert.ToDateTime(le.LicenseEndDate.Value.ToString().Trim(' ')) < DateTime.Now).ToList();
+
+                    if (rowData == null)
+                    {
+                        log.Info("No expired data present.");
+                    }
+                    else
+                    {
+                        foreach (var row in rowData)
+                        {
+                            string paid = row.Paid;
+                            log.Debug($"DB Row ID {row.Id} with PAID Value: {paid} has expired with License End date: {row.LicenseEndDate.Value}, removing from database.");
+                            var maprow = db.ItvConversionData
+                                           .Where(r => r.Paid == paid)
+                                           .FirstOrDefault();
+
+                            if (maprow != null)
+                            {
+
+                                db.ItvConversionData.Remove(maprow);
+                                db.SaveChanges();
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -146,20 +198,20 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
         /// </summary>
         private void ProcessQueuedItems()
         {
-            if(WF_WorkQueue.queue.Count >= 1)
+            if (WF_WorkQueue.queue.Count >= 1)
             {
                 Drive_Info drive_Info = new Drive_Info();
                 for (int q = 0; q < WF_WorkQueue.queue.Count; q++)
                 {
                     ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning = drive_Info.GetDriveSpace();
-                    if(ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning)
+                    if (ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning)
                     {
                         WorkQueueItem itvFile = (WorkQueueItem)WF_WorkQueue.queue[q];
 
                         try
                         {
                             log.Info($"############### Processing STARTED For Queued item {q + 1} of {WF_WorkQueue.queue.Count}: {itvFile.file.Name} ###############\r\n\r\n");
-
+                            IsProcessing = true;
                             Mapping = new MapITVtoADI
                             {
                                 ITV_FILE = itvFile.file.FullName
@@ -182,7 +234,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                                         log.Error($"Failed to delete source ITV File: {itvFile.file.FullName}?");
                                     }
                                 }
-
                                 log.Info($"############### Processing SUCCESSFUL For Queued file: {Mapping.ITV_FILE} ###############\r\n\r\n");
 
                             }
@@ -194,14 +245,18 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                         catch (Exception PQI_EX)
                         {
                             log.Error($"Caught Exception during Process of Queued Items: {PQI_EX.Message}");
-
+                            Mapping.CleanUp();
                             log.Info($"############### Processing FAILED For Queued file: {itvFile.file.Name} ###############\r\n\r\n");
                             B_IsSuccess = false;
                             continue;
                         }
                         finally
                         {
-                            Mapping.CleanUp(B_IsSuccess);
+                            if(Mapping.ItvFailure)
+                            {
+                                log.Info($"A Product/Products were flagged as failed during processing, Removing Source ITV File: {itvFile.file.FullName}");
+                                File.Delete(itvFile.file.FullName);
+                            }
                         }
                     }
                     else
@@ -210,6 +265,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                     }
                 }
             }
+            IsProcessing = false;
         }
     }
 }

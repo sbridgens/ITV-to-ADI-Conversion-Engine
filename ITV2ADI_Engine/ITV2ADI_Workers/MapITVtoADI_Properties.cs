@@ -16,6 +16,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         /// </summary>
         private readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(MapITVtoADI));
 
+
         /// <summary>
         /// Required in order to understand if the asset is an update as this is used to compare to 
         /// previously stored date
