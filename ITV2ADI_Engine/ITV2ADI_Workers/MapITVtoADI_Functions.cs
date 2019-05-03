@@ -22,9 +22,9 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             try
             {
                 AdiMapping.SetAMSClass();
-                AdiMapping.SetAMSPAID(ITV_Parser.Padding(ITVPaser.ITV_PAID), ITVPaser.ITV_PAID, true);
+                AdiMapping.SetAMSPAID(ITV_Parser.Padding(ITVParser.ITV_PAID), ITVParser.ITV_PAID, true);
                 AdiMapping.SetAMSAssetName(ProgramTitle);
-                AdiMapping.SetAMSCreationDate(ITVPaser.GET_ITV_VALUE("Publication_Date"));
+                AdiMapping.SetAMSCreationDate(ITVParser.GET_ITV_VALUE("Publication_Date"));
                 AdiMapping.SetAMSDescription(ProgramTitle);
                 AdiMapping.SetAMSProvider(ProviderName);
                 AdiMapping.SetAMSProviderId(ProviderId);
@@ -70,7 +70,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
             using (ITVConversionContext uDB = new ITVConversionContext())
             {
-                var rowData = uDB.ItvConversionData.Where(p => p.Paid == ITVPaser.ITV_PAID)
+                var rowData = uDB.ItvConversionData.Where(p => p.Paid == ITVParser.ITV_PAID)
                                                    .Select(pd => new
                                                     {
                                                         pd.Id,
@@ -116,14 +116,14 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 {
                     seedDb.ItvConversionData.Add(new ItvConversionData
                     {
-                        Paid = ITVPaser.ITV_PAID,
+                        Paid = ITVParser.ITV_PAID,
                         Title = ProgramTitle,
                         VersionMajor = Version_Major,
                         LicenseStartDate = LicenseStart,
                         LicenseEndDate = LicenseEnd,
                         ProviderName = ProviderName,
                         ProviderId = ProviderId,
-                        OriginalItv = ITVPaser.ITV_Data.ToString(),
+                        OriginalItv = ITVParser.ITV_Data.ToString(),
                         MediaFileName = MediaFileName,
                         MediaFileLocation = MediaLocation,
                         ProcessedDateTime = DateTime.Now,
@@ -172,7 +172,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         entity.UpdatedDateTime = DateTime.Now;
                         //entity.UpdatedFileLocation = MediaLocation;
                         //entity.UpdatedFileName = MediaFileName;
-                        entity.UpdatedItv = ITVPaser.ITV_Data.ToString();
+                        entity.UpdatedItv = ITVParser.ITV_Data.ToString();
                         //entity.UpdatedMediaChecksum = MediaChecksum;
                     }
 
@@ -225,35 +225,32 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
                     try
                     {
-                        string itvValue = "";
+                        string itvValue = ITVParser.GET_ITV_VALUE(entry.ItvElement);
                         bool IsMandatoryField = entry.IsMandatoryField;
                         SetAdiAssetId(entry.IsTitleMetadata);
 
                         if (B_IsFirst)
                         {
                             //In place to get the showtype
-                            string tmpVal = ITVPaser.GET_ITV_VALUE("ReportingClass");
+                            string tmpVal = ITVParser.GET_ITV_VALUE("ReportingClass");
                             iTVConversion.ParseReportingClass(tmpVal, true);
                             B_IsFirst = false;
                         }
 
                         Dictionary<string, Func<string>> ValueParser = new Dictionary<string, Func<string>>()
                         {
-                            { "none" , () => ITVPaser.GetNoneTypeValue(entry.ItvElement) },
-                            { "BillingId",() =>  ITV_Parser.GetBillingId(ITVPaser.ITV_PAID)},
-                            { "SummaryLong", () => AdiMapping.ConcatTitleDataXmlValues(itvValue, ITVPaser.GET_ITV_VALUE("ContentGuidance")) },
+                            { "none" , () => ITVParser.GetNoneTypeValue(entry.ItvElement) },
+                            { "BillingId",() =>  ITV_Parser.GetBillingId(ITVParser.ITV_PAID)},
+                            { "SummaryLong", () => AdiMapping.ConcatTitleDataXmlValues(itvValue, ITVParser.GET_ITV_VALUE("ContentGuidance")) },
                             { "Length", () => VideoFileProperties.GetMediaInfoDuration(FullAssetName, IsUpdate) },
-                            { "RentalTime", () => ITVPaser.GetRentalTime(entry.ItvElement,itvValue, iTVConversion.IsMovie, iTVConversion.IsAdult) },
+                            { "RentalTime", () => ITVParser.GetRentalTime(entry.ItvElement,itvValue, iTVConversion.IsMovie, iTVConversion.IsAdult) },
                             { "ReportingClass",() =>  iTVConversion.ParseReportingClass(itvValue, entry.IsTitleMetadata) },
-                            { "ServiceCode",() => AdiMapping.ProcessServiceCode(iTVConversion.IsAdult,  ITVPaser.GET_ITV_VALUE("ServiceCode")) },
+                            { "ServiceCode",() => AdiMapping.ProcessServiceCode(iTVConversion.IsAdult,  ITVParser.GET_ITV_VALUE("ServiceCode")) },
                             { "HDContent", () => AdiMapping.SetEncodingFormat(itvValue) },
-                            { "CanBeSuspended",() =>  ITVPaser.CanBeSuspended(itvValue)},
+                            { "CanBeSuspended",() =>  ITVParser.CanBeSuspended(itvValue)},
                             { "Language", () =>  ITV_Parser.GetISO6391LanguageCode(itvValue) },
                             { "AnalogCopy", () => AdiMapping.CGMSMapping(itvValue) }
                         };
-                        //ITV_Parser.GetTimeSpan(entry.ItvElement, itvValue) },
-                        //set initially otherwise we end up with a null reference.
-                        itvValue = ITVPaser.GET_ITV_VALUE(entry.ItvElement);
 
                         if (ValueParser.ContainsKey(entry.ItvElement))
                         {

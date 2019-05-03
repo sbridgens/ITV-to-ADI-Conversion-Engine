@@ -164,6 +164,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         /// <summary>
         /// pre initialiser of the itv parser
         /// </summary>
-        private ITV_Parser ITVPaser;
+        private ITV_Parser ITVParser;
     }
 }
