@@ -29,10 +29,14 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 log.Info("Loading and parsing itv File");
                 ITVParser = new ITV_Parser();
                 ITVParser.ParseItvFile(ITV_FILE);
-                ITVParser.ProductsComponentMappingList = new Dictionary<string, string>();
+                if(FilterItvFile())
+                {
+                    ITVParser.ProductsComponentMappingList = new Dictionary<string, string>();
 
-                log.Info("ITV Successfully parsed");
-                BuildProductLists();
+                    log.Info("ITV Successfully parsed");
+                    BuildProductLists();
+                }
+                
                 return B_IsSuccess;
             }
             catch (Exception SIM_EX)
@@ -45,6 +49,43 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
         
+        private bool FilterItvFile()
+        {
+            try
+            {
+                var blah = ITVParser.ITV_Data.ToString();
+                using (ITVConversionContext conversionContext = new ITVConversionContext())
+                {
+                    List<Itvfilter> itvFilters = conversionContext.Itvfilter.ToList();
+
+                    foreach(Itvfilter filter in itvFilters)
+                    {
+                        if(filter.Enabled == true)
+                        {
+                            string regexPattern = $"(?i)({filter.MatchString})".Replace("\\","\\\\");
+                            Match match = Regex.Match(ITVParser.ITV_Data.ToString(), regexPattern);
+                            if (match.Success)
+                            {
+                                log.Warn($"ITV File: {ITV_FILE} has a matching filter string: {filter.MatchString} moving file to {filter.MoveOnMatchDirectory}");
+                                log.Warn($"Failing ingest for {ITV_FILE} due to matching filter string");
+                                FileDirectoryOperations.MoveFile(ITV_FILE, Path.Combine(filter.MoveOnMatchDirectory, Path.GetFileName(ITV_FILE)));
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+            catch(Exception FIFEX)
+            {
+                log.Error($"Failed Filtering ITV File: {ITV_FILE} - {FIFEX.Message}");
+                if (FIFEX.InnerException != null)
+                    log.Debug($"Inner exception: {FIFEX.InnerException.Message}");
+
+                return false;
+            }
+        }
+
         /// <summary>
         /// Function to save the New adi file
         /// </summary>

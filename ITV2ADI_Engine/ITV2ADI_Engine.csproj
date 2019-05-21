@@ -240,6 +240,7 @@
   <ItemGroup>
     <Compile Include="ITV2ADI_Database\FieldMappings.cs" />
     <Compile Include="ITV2ADI_Database\ItvConversionData.cs" />
+    <Compile Include="ITV2ADI_Database\Itvfilter.cs" />
     <Compile Include="ITV2ADI_Database\MediaLocations.cs" />
     <Compile Include="ITV2ADI_Managers\ITV2ADI_Controller.cs" />
     <Compile Include="ITV2ADI_Service.cs">

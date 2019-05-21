@@ -18,6 +18,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
 
         public virtual DbSet<FieldMappings> FieldMappings { get; set; }
         public virtual DbSet<ItvConversionData> ItvConversionData { get; set; }
+        public virtual DbSet<Itvfilter> Itvfilter { get; set; }
         public virtual DbSet<MediaLocations> MediaLocations { get; set; }
         public virtual DbSet<ProviderContentTierMapping> ProviderContentTierMapping { get; set; }
         public virtual DbSet<ReportClassMapping> ReportClassMapping { get; set; }
@@ -35,7 +36,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.HasAnnotation("ProductVersion", "2.2.3-servicing-35854");
+            modelBuilder.HasAnnotation("ProductVersion", "2.2.4-servicing-10062");
 
             modelBuilder.Entity<FieldMappings>(entity =>
             {
@@ -106,6 +107,19 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
                 entity.Property(e => e.UpdatedItv).HasColumnName("Updated_ITV");
 
                 entity.Property(e => e.UpdatedMediaChecksum).HasMaxLength(250);
+            });
+
+            modelBuilder.Entity<Itvfilter>(entity =>
+            {
+                entity.ToTable("ITVFilter");
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .ValueGeneratedNever();
+
+                entity.Property(e => e.MatchString).IsRequired();
+
+                entity.Property(e => e.MoveOnMatchDirectory).IsRequired();
             });
 
             modelBuilder.Entity<MediaLocations>(entity =>
