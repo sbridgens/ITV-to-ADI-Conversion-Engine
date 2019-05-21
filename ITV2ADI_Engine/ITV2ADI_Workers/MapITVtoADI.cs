@@ -53,7 +53,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         {
             try
             {
-                var blah = ITVParser.ITV_Data.ToString();
                 using (ITVConversionContext conversionContext = new ITVConversionContext())
                 {
                     List<Itvfilter> itvFilters = conversionContext.Itvfilter.ToList();
