@@ -32,7 +32,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 if(FilterItvFile())
                 {
                     ITVParser.ProductsComponentMappingList = new Dictionary<string, string>();
-
                     log.Info("ITV Successfully parsed");
                     BuildProductLists();
                 }
@@ -55,20 +54,64 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             {
                 using (ITVConversionContext conversionContext = new ITVConversionContext())
                 {
-                    List<Itvfilter> itvFilters = conversionContext.Itvfilter.ToList();
+                    var itvFilters = conversionContext.Itvfilter.ToList();
+                    var fileLines = File.ReadAllLines(ITV_FILE);
 
-                    foreach(Itvfilter filter in itvFilters)
+                    foreach (Itvfilter filter in itvFilters)
                     {
                         if(filter.Enabled == true)
                         {
-                            string regexPattern = $"(?i)({filter.MatchString})".Replace("\\","\\\\");
-                            Match match = Regex.Match(ITVParser.ITV_Data.ToString(), regexPattern);
-                            if (match.Success)
+                            int filterLength = 0;
+                            //string regexPattern = $"(?i)({filter.MatchString})".Replace("\\","\\\\");
+                            string searchString = filter.MatchString.Replace("\\", "\\\\");
+
+                            if (searchString.Contains("="))
                             {
-                                log.Warn($"ITV File: {ITV_FILE} has a matching filter string: {filter.MatchString} moving file to {filter.MoveOnMatchDirectory}");
-                                log.Warn($"Failing ingest for {ITV_FILE} due to matching filter string");
-                                FileDirectoryOperations.MoveFile(ITV_FILE, Path.Combine(filter.MoveOnMatchDirectory, Path.GetFileName(ITV_FILE)));
-                                return false;
+                                var oldSearch = searchString.Length;
+                                searchString = searchString.Contains(" = ")
+                                             ? $"(?i)(?m)(?<!\\S)({searchString})$"
+                                             : $"(?i)(?m)(?<!\\S)({searchString.Replace("=", " = ")})$";
+
+                                filterLength = filter.MatchString.Length + (searchString.Length - oldSearch);
+                            }
+                            foreach(var line in fileLines)
+                            {
+                                Match match = Regex.Match(line, searchString);
+                                if (match.Success)
+                                {
+                                    log.Warn($"Failing ingest for {ITV_FILE} due to matching filter string");
+
+                                    if (filter.DeleteOnMatch == true)
+                                    {
+                                        log.Warn($"Delete on match is TRUE, deleting source itv file: {ITV_FILE}");
+
+                                        File.Delete(ITV_FILE);
+
+                                        if (!File.Exists(ITV_FILE))
+                                        {
+                                            log.Info($"File: {ITV_FILE} successfully deleted.");
+                                        }
+                                        else
+                                        {
+                                            log.Error($"Failed to delete source itv file: {ITV_FILE}");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        log.Warn($"Delete on match is FALSE, moving file {ITV_FILE} to {filter.MoveOnMatchDirectory}");
+                                        string destfile = Path.Combine(filter.MoveOnMatchDirectory, Path.GetFileName(ITV_FILE));
+                                        FileDirectoryOperations.MoveFile(ITV_FILE, destfile);
+                                        if(File.Exists(destfile))
+                                        {
+                                            log.Info($"Successfully moved source itv file: {ITV_FILE} to {destfile}");
+                                        }
+                                        else
+                                        {
+                                            log.Warn($"Failed to move source itv file {ITV_FILE} to {destfile} check logs.");
+                                        }
+                                    }
+                                    return false;
+                                }
                             }
                         }
                     }

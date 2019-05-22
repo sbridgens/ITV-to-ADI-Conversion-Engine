@@ -7,6 +7,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
     {
         public int Id { get; set; }
         public string MatchString { get; set; }
+        public bool? DeleteOnMatch { get; set; }
         public string MoveOnMatchDirectory { get; set; }
         public bool Enabled { get; set; }
     }

@@ -113,9 +113,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Database
             {
                 entity.ToTable("ITVFilter");
 
-                entity.Property(e => e.Id)
-                    .HasColumnName("id")
-                    .ValueGeneratedNever();
+                entity.Property(e => e.Id).HasColumnName("id");
 
                 entity.Property(e => e.MatchString).IsRequired();
 
