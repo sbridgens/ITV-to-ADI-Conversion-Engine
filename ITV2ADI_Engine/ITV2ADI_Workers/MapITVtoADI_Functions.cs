@@ -87,6 +87,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         ItvData_RowId = rowData.Id;
                         Version_Major = rowData.VersionMajor +1;
                         log.Info($"Existing Version Major: {rowData.VersionMajor} Updated Version Major: {Version_Major}");
+                        
                         IsUpdate = true;
                         return;
                     }
@@ -199,6 +200,23 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
 
+        private string GetVideoRuntime()
+        {
+            if(!IsUpdate)
+            {
+                return VideoFileProperties.GetMediaInfoDuration(FullAssetName, IsUpdate);
+            }
+            else
+            {
+                return AdiMapping.ADI_FILE.Asset.Metadata.App_Data
+                                 .Where(
+                                            r => r.Name == "Run_Time"
+                                       )
+                                 .FirstOrDefault()
+                                 .Value;
+            }
+        }
+
         /// <summary>
         /// Function that iterates the mappings table in the database and ensures the correct adi fields
         /// are set with the mapped data, also the valueparser dictionary allows func calls for fields that require
@@ -242,7 +260,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                             { "none" , () => ITVParser.GetNoneTypeValue(entry.ItvElement) },
                             { "BillingId",() =>  ITV_Parser.GetBillingId(ITVParser.ITV_PAID)},
                             { "SummaryLong", () => AdiMapping.ConcatTitleDataXmlValues(itvValue, ITVParser.GET_ITV_VALUE("ContentGuidance")) },
-                            { "Length", () => VideoFileProperties.GetMediaInfoDuration(FullAssetName, IsUpdate) },
+                            { "Length", () => GetVideoRuntime() }, //VideoFileProperties.GetMediaInfoDuration(FullAssetName, IsUpdate) },
                             { "RentalTime", () => ITVParser.GetRentalTime(entry.ItvElement,itvValue, iTVConversion.IsMovie, iTVConversion.IsAdult) },
                             { "ReportingClass",() =>  iTVConversion.ParseReportingClass(itvValue, entry.IsTitleMetadata) },
                             { "ServiceCode",() => AdiMapping.ProcessServiceCode(iTVConversion.IsAdult,  ITVParser.GET_ITV_VALUE("ServiceCode")) },

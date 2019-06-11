@@ -214,9 +214,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
                         log.Info($"*************** Generating Package For PAID: { ITVParser.ITV_PAID}, Program name: {programName} ***************\r\n");
                         log.Info($"Matching ComponentID: {ComponentData.KeyName},{ctype}");
-
-                        LoadAdiTemplate();
-
+                        
                         if (StartProcessing())
                         {
                             B_IsSuccess = true;
@@ -263,7 +261,19 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             try
             {
                 AdiMapping = new ADI_Mapping();
-                AdiMapping.DeserializeAdi(Properties.Resources.ADITemplate);
+                if (!IsUpdate)
+                {
+
+                    AdiMapping.DeserializeAdi(Properties.Resources.ADITemplate);
+                }
+                else
+                {
+                    using (ITVConversionContext db = new ITVConversionContext())
+                    {
+                        var origAdi  = db.ItvConversionData.Where(p => p.Paid == ITVParser.ITV_PAID).FirstOrDefault().OriginalAdi;
+                        AdiMapping.DeserializeAdi(origAdi);
+                    }
+                }
             }
             catch (Exception LAT_EX)
             {
@@ -282,6 +292,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         {
             log.Info("Starting Conversion of itv data to ADI");
             CheckUpdate();
+            LoadAdiTemplate();
 
             if (!RejectIngest)
             {

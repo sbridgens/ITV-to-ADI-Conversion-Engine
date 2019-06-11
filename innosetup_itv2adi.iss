@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "ITV2ADI Workflow Engine"
-#define MyAppVersion "1.01"
+#define MyAppVersion "1.05"
 #define MyAppPublisher "SCH Tech ltd"
 #define MyAppURL "simon@schtech.co.uk"
 #define MyAppExeName "ITV2ADI_Engine.exe"
