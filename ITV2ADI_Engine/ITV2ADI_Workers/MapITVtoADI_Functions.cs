@@ -7,6 +7,8 @@ using System.IO;
 using SCH_CONFIG;
 using ITV2ADI_Engine.ITV2ADI_Database;
 using SCH_ADI;
+using System.Text.RegularExpressions;
+using System.Text;
 
 namespace ITV2ADI_Engine.ITV2ADI_Workers
 {
@@ -104,6 +106,36 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 }
             }
         }
+
+        private string GetVideoFileName()
+        {
+            string legalChars = @"^[a-zA-Z0-9._]+$";
+            if(Regex.IsMatch(MediaFileName, legalChars, RegexOptions.IgnoreCase))
+            {
+                return MediaFileName;
+            }
+            else
+            {
+                log.Warn($"Filename: {MediaFileName} contains illegal chars");
+                 char[] c = MediaFileName.ToCharArray();
+                var tmpFileName = new StringBuilder();
+
+                foreach (char ch in c)
+                {
+                    if(!Regex.IsMatch(ch.ToString(), legalChars, RegexOptions.IgnoreCase))
+                    {
+                        log.Warn($"Replacing illegal char: {ch} with _");
+                        tmpFileName.Append(ch.ToString().Replace(ch.ToString(), "_"));
+                    }
+                    else
+                    {
+                        tmpFileName.Append(ch);
+                    }
+                }
+                log.Warn($"New destination file name: {tmpFileName}, Original filename: {MediaFileName}");
+                return tmpFileName.ToString();
+            }
+        }
         
         /// <summary>
         /// Seeds the data early on as some parts are used for lookups / updating
@@ -125,7 +157,8 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         ProviderName = ProviderName,
                         ProviderId = ProviderId,
                         OriginalItv = ITVParser.ITV_Data.ToString(),
-                        MediaFileName = MediaFileName,
+                        //updated to check for illegal chars
+                        MediaFileName = GetVideoFileName(),
                         MediaFileLocation = MediaLocation,
                         ProcessedDateTime = DateTime.Now,
                         PublicationDate = Publication_Date
@@ -332,13 +365,14 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                                 log.Info($"Copying Media File: {FullAssetName} to {MediaDirectory}");
 
                                 //create the destination filename
-                                string destFname = Path.Combine(MediaDirectory, MediaFileName);
+                                //updated to ensure correct video file name is used.
+                                string destFname = Path.Combine(MediaDirectory, GetVideoFileName());
                                 //Begin the file movement and file operations
                                 if (FileDirectoryOperations.CopyFile(FullAssetName, destFname))
                                 {
                                     log.Info($"Media file successfully copied, obtaining file hash for file: {destFname}");
                                     MediaChecksum = VideoFileProperties.GetFileHash(destFname);
-                                    log.Info($"Source file Hash for {MediaFileName}: {MediaChecksum}");
+                                    log.Info($"Source file Hash for {destFname}: {MediaChecksum}");
                                     string fsize = VideoFileProperties.GetFileSize(destFname).ToString();
                                     log.Info($"Source file Size for {destFname}: {fsize}");
                                     AdiMapping.Asset_ID = AdiMapping.ADI_FILE.Asset.Asset.FirstOrDefault().Metadata.AMS.Asset_ID;
