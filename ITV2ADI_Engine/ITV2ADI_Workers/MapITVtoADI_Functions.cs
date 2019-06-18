@@ -117,7 +117,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             else
             {
                 log.Warn($"Filename: {MediaFileName} contains illegal chars");
-                 char[] c = MediaFileName.ToCharArray();
+                char[] c = MediaFileName.ToCharArray();
                 var tmpFileName = new StringBuilder();
 
                 foreach (char ch in c)
@@ -158,7 +158,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         ProviderId = ProviderId,
                         OriginalItv = ITVParser.ITV_Data.ToString(),
                         //updated to check for illegal chars
-                        MediaFileName = GetVideoFileName(),
+                        MediaFileName = MediaFileName,
                         MediaFileLocation = MediaLocation,
                         ProcessedDateTime = DateTime.Now,
                         PublicationDate = Publication_Date
@@ -388,6 +388,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                                     }
 
                                     log.Info("Media metadata and operations completed successfully.");
+                                    MediaFileName = destFname;
                                     return true;
                                 }
                                 else
