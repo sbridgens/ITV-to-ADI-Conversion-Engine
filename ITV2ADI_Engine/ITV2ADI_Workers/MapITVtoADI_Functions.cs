@@ -15,6 +15,9 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
     public partial class MapITVtoADI
     {
         private string FullAssetName { get; set; }
+
+        private bool IsQam { get; set; }
+
         /// <summary>
         /// Updates the ADI file AMS Sections
         /// </summary>
@@ -24,7 +27,18 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             try
             {
                 AdiMapping.SetAMSClass();
-                AdiMapping.SetAMSPAID(ITV_Parser.Padding(ITVParser.ITV_PAID), ITVParser.ITV_PAID, true);
+                Match MatchValue = Regex.Match(ITVParser.ITV_PAID, "[A-Za-z]");
+
+                if (MatchValue.Success)
+                {
+                    IsQam = true;
+                }
+                else
+                {
+                    IsQam = false;
+                }
+
+                AdiMapping.SetAMSPAID(ITV_Parser.Padding(ITVParser.ITV_PAID), ITVParser.ITV_PAID, IsQam);
                 AdiMapping.SetAMSAssetName(ProgramTitle);
                 AdiMapping.SetAMSCreationDate(ITVParser.GET_ITV_VALUE("Publication_Date"));
                 AdiMapping.SetAMSDescription(ProgramTitle);
@@ -284,7 +298,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         {
                             //In place to get the showtype
                             string tmpVal = ITVParser.GET_ITV_VALUE("ReportingClass");
-                            iTVConversion.ParseReportingClass(tmpVal, true);
+                            iTVConversion.ParseReportingClass(tmpVal, entry.AdiElement, true);
                             B_IsFirst = false;
                         }
 
@@ -295,7 +309,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                             { "SummaryLong", () => AdiMapping.ConcatTitleDataXmlValues(itvValue, ITVParser.GET_ITV_VALUE("ContentGuidance")) },
                             { "Length", () => GetVideoRuntime() }, //VideoFileProperties.GetMediaInfoDuration(FullAssetName, IsUpdate) },
                             { "RentalTime", () => ITVParser.GetRentalTime(entry.ItvElement,itvValue, iTVConversion.IsMovie, iTVConversion.IsAdult) },
-                            { "ReportingClass",() =>  iTVConversion.ParseReportingClass(itvValue, entry.IsTitleMetadata) },
+                            { "ReportingClass",() =>  iTVConversion.ParseReportingClass(itvValue, entry.AdiElement, entry.IsTitleMetadata) },
                             { "ServiceCode",() => AdiMapping.ProcessServiceCode(iTVConversion.IsAdult,  ITVParser.GET_ITV_VALUE("ServiceCode")) },
                             { "HDContent", () => AdiMapping.SetEncodingFormat(itvValue) },
                             { "CanBeSuspended",() =>  ITVParser.CanBeSuspended(itvValue)},
@@ -307,6 +321,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         {
                             itvValue = ValueParser[entry.ItvElement]();
                         }
+
 
                         if (!string.IsNullOrEmpty(itvValue))
                         {

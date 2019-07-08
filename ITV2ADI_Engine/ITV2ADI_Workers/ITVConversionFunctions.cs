@@ -56,7 +56,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         /// <param name="ReportingClass"></param>
         /// <param name="isShowType"></param>
         /// <returns></returns>
-        public string ParseReportingClass(string ReportingClass, bool isShowType)
+        public string ParseReportingClass(string ReportingClass, string adiElement, bool isShowType)
         {
 
             var result = Db.ReportClassMapping.Where(r => r.ReportingClass.ToLower() == ReportingClass.ToLower() &&
@@ -71,6 +71,10 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             SetFlags(result.ShowType.ToLower());
             
             if (!string.IsNullOrEmpty(result.FolderLocation) && !isShowType)
+            {
+                return result.FolderLocation;
+            }
+            if(adiElement.Equals("Folder_Location"))
             {
                 return result.FolderLocation;
             }
