@@ -27,18 +27,18 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             try
             {
                 AdiMapping.SetAMSClass();
-                Match MatchValue = Regex.Match(ITVParser.ITV_PAID, "[A-Za-z]");
+                //Match MatchValue = Regex.Match(ITVParser.ITV_PAID, "[A-Za-z]");
 
-                if (MatchValue.Success)
-                {
-                    IsQam = true;
-                }
-                else
-                {
-                    IsQam = false;
-                }
+                //if (MatchValue.Success)
+                //{
+                //    IsQam = true;
+                //}
+                //else
+                //{
+                //    IsQam = false;
+                //}
 
-                AdiMapping.SetAMSPAID(ITV_Parser.Padding(ITVParser.ITV_PAID), ITVParser.ITV_PAID, IsQam);
+                AdiMapping.SetAMSPAID(ITV_Parser.Padding(ITVParser.ITV_PAID), ITVParser.ITV_PAID);
                 AdiMapping.SetAMSAssetName(ProgramTitle);
                 AdiMapping.SetAMSCreationDate(ITVParser.GET_ITV_VALUE("Publication_Date"));
                 AdiMapping.SetAMSDescription(ProgramTitle);
@@ -264,6 +264,36 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
 
+        private bool SetProviderContentTierData()
+        {
+            ProviderContentTierMapping contentTierMapping = new ProviderContentTierMapping();
+
+            using (ITVConversionContext ctm_Context = new ITVConversionContext())
+            {
+                string distributor_val = ITVParser.GET_ITV_VALUE("Distributor");
+
+                foreach (ProviderContentTierMapping ctm_entry in ctm_Context.ProviderContentTierMapping)
+                {
+                    try
+                    {
+                        if(ctm_entry.Distributor == distributor_val)
+                        {
+                            AdiMapping.SetProviderContentTierValue(ctm_entry.ProviderContentTier);
+                        }
+                    }
+                    catch(Exception SPCTD_EX)
+                    {
+                        log.Error($"Failed while Mapping distributor data: {ctm_entry.Distributor} to Provider content tier: {ctm_entry.ProviderContentTier} - {SPCTD_EX.Message}");
+                        if (SPCTD_EX.InnerException != null)
+                            log.Debug($"Inner Exception: {SPCTD_EX.InnerException.Message}");
+
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
         /// <summary>
         /// Function that iterates the mappings table in the database and ensures the correct adi fields
         /// are set with the mapped data, also the valueparser dictionary allows func calls for fields that require
@@ -273,6 +303,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         private bool SetProgramData()
         {
             iTVConversion = new ITVConversionFunctions();
+            
 
             using (db = new ITVConversionContext())
             {
@@ -284,7 +315,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     SeedItvData();
                 }
 
-                
+
                 foreach (var entry in db.FieldMappings.OrderBy(x => x.ItvElement))
                 {
 

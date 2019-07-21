@@ -3,7 +3,7 @@
   <Metadata>
     <AMS Asset_Class="package" Asset_ID="" Asset_Name="" Creation_Date="" Description="" Product="" Provider="" Provider_ID="" Verb="" Version_Major="1" Version_Minor="0" />
     <App_Data App="VOD" Name="Metadata_Spec_Version" Value="CableLabsVOD1.1" />
-    <App_Data App="VOD" Name="Provider_Content_Tier" Value="Digit" />
+    <App_Data App="VOD" Name="Provider_Content_Tier" Value="" />
   </Metadata>
   <Asset>
     <Metadata>
