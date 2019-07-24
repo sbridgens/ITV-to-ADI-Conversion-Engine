@@ -222,6 +222,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         //entity.UpdatedFileName = MediaFileName;
                         entity.UpdatedItv = ITVParser.ITV_Data.ToString();
                         //entity.UpdatedMediaChecksum = MediaChecksum;
+
                     }
 
                     int count = upDb.SaveChanges();
@@ -233,6 +234,42 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             {
                 throw new Exception($"Error encountered Updating DB Data: {UID_EX.Message}");
             }
+        }
+
+        private bool ProcessTvodUpdate()
+        {
+            try
+            {
+                using (ITVConversionContext iTVConversionContext = new ITVConversionContext())
+                {
+                    string _DBAdiFile = iTVConversionContext
+                                       .ItvConversionData
+                                       .Where(i => i.Id == ItvData_RowId)
+                                       .FirstOrDefault()
+                                       .OriginalAdi;
+
+                    AdiMapping.DeserializeDBEnrichedAdi(_DBAdiFile);
+
+                    log.Info($"Successfully Loaded Original Adi file from DB for TVOD update.");
+                    RemoveTvodUpdateContent();
+
+                }
+                return true;
+            }
+            catch(Exception PTU_EX)
+            {
+
+                log.Error($"Failed while Processing TVOD Update: {PTU_EX.Message}");
+                if (PTU_EX.InnerException != null)
+                    log.Debug($"Inner exception: {PTU_EX.InnerException.Message}");
+
+                return false;
+            }
+        }
+
+        private void RemoveTvodUpdateContent()
+        {
+            AdiMapping.RemoveTvodUpdateContentSection();
         }
 
         private void SetAdiAssetId(bool isTitleMetadata)
@@ -279,6 +316,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                         if(ctm_entry.Distributor == distributor_val)
                         {
                             AdiMapping.SetProviderContentTierValue(ctm_entry.ProviderContentTier);
+                            break;
                         }
                     }
                     catch(Exception SPCTD_EX)
@@ -292,6 +330,19 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 }
             }
             return true;
+        }
+
+        private void CheckTvodUpdate()
+        {
+            string adi = Path.Combine(WorkingDirectory, "ADI.xml");
+            if (AdiMapping.IsTVOD && ProcessTvodUpdate())
+            {
+                log.Info("Successfully processed TVOD Update.");
+                //var test = AdiMapping.des
+
+                AdiMapping.SaveAdi(adi, AdiMapping.ADI_FILE);
+                AdiMapping.LoadXDocument(adi);
+            }
         }
 
         /// <summary>
@@ -314,7 +365,6 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 {
                     SeedItvData();
                 }
-
 
                 foreach (var entry in db.FieldMappings.OrderBy(x => x.ItvElement))
                 {
@@ -377,6 +427,9 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     }
                 }
             }
+
+            CheckTvodUpdate();
+
             return true;
         }
 

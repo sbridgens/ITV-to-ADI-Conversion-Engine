@@ -137,11 +137,12 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
         {
             try
             {
-                if (IsUpdate)
+                if (IsUpdate && !AdiMapping.IsTVOD)
                 {
                     AdiMapping.RemoveUpdateAssetSection();
                 }
-                AdiMapping.SaveAdi(Path.Combine(WorkingDirectory, AdiFileName));
+                AdiMapping.SaveAdi(Path.Combine(WorkingDirectory, AdiFileName), AdiMapping.ADI_FILE);
+
                 return true;
             }
             catch (Exception SAF_EX)
@@ -298,9 +299,9 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             {
                 return CreateWorkingDirectory() &&
                        SetAmsData() &&
-                       SetAssetData() &&
                        SetProviderContentTierData() &&
                        SetProgramData() &&
+                       SetAssetData() &&
                        SaveAdiFile("ADI.xml") &&
                        PackageAndDeliverAsset();
             }
