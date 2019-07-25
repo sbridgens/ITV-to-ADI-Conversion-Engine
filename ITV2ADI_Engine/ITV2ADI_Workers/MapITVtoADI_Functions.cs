@@ -332,17 +332,28 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             return true;
         }
 
-        private void CheckTvodUpdate()
+        private bool CheckTvodUpdate()
         {
             string adi = Path.Combine(WorkingDirectory, "ADI.xml");
-            if (AdiMapping.IsTVOD && ProcessTvodUpdate())
-            {
-                log.Info("Successfully processed TVOD Update.");
-                //var test = AdiMapping.des
 
-                AdiMapping.SaveAdi(adi, AdiMapping.ADI_FILE);
-                AdiMapping.LoadXDocument(adi);
+            if (AdiMapping.IsTVOD && IsUpdate)
+            {
+                if (ProcessTvodUpdate())
+                {
+                    log.Info("Successfully processed TVOD Update.");
+                    //var test = AdiMapping.des
+
+                    AdiMapping.SaveAdi(adi, AdiMapping.ADI_FILE);
+                    AdiMapping.LoadXDocument(adi);
+                    return true;
+                }
+                else
+                {
+                    log.Error("Enountered an error during the processing of a tvod update, check logs.");
+                    return false;
+                }
             }
+            return true;
         }
 
         /// <summary>
@@ -428,9 +439,9 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 }
             }
 
-            CheckTvodUpdate();
+            
 
-            return true;
+                return CheckTvodUpdate();
         }
 
         /// <summary>
@@ -566,7 +577,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     ///if the config value DeleteFromSource = true delete the source media
                     if (DeleteFromSource)
                     {
-                        FileDirectoryOperations.DeleteSourceMedia(MediaLocation, MediaFileName);
+                        FileDirectoryOperations.DeleteSourceMedia(MediaLocation, Path.GetFileName(MediaFileName));
                     }
 
                     log.Info("Starting Packaging and Delivery operations completed Successfully.");

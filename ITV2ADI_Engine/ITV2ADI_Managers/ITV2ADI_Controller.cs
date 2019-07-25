@@ -134,6 +134,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
 
             while (ConfigHandler<ITV2ADI_CONFIG>.B_IsRunning == true)
             {
+                CleanTempDirectory();
                 string pollFiles = PollHandler.StartPolling(ITV2ADI_CONFIG.InputDirectory, ".itv");
                 if (!string.IsNullOrEmpty(pollFiles))
                     log.Info(pollFiles);
@@ -148,8 +149,12 @@ namespace ITV2ADI_Engine.ITV2ADI_Managers
                 {
                     Thread.Sleep(Convert.ToInt32(ITV2ADI_CONFIG.PollIntervalInSeconds) * 1000);
                 }
-
             }
+        }
+
+        void CleanTempDirectory()
+        {
+            FileDirectoryOperations.CleanTempDirectory(ITV2ADI_CONFIG.TempWorkingDirectory);
         }
 
         /// <summary>

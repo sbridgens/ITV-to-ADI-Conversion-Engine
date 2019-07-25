@@ -299,9 +299,9 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             {
                 return CreateWorkingDirectory() &&
                        SetAmsData() &&
+                       SetAssetData() &&
                        SetProviderContentTierData() &&
                        SetProgramData() &&
-                       SetAssetData() &&
                        SaveAdiFile("ADI.xml") &&
                        PackageAndDeliverAsset();
             }
