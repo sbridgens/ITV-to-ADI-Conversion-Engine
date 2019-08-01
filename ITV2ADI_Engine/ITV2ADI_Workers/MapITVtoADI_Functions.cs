@@ -123,6 +123,8 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
         private string GetVideoFileName()
         {
+            FileDirectoryOperations.OriginalFileName = MediaFileName;
+
             string legalChars = @"^[a-zA-Z0-9._]+$";
             if(Regex.IsMatch(MediaFileName, legalChars, RegexOptions.IgnoreCase))
             {
@@ -251,7 +253,13 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     AdiMapping.DeserializeDBEnrichedAdi(_DBAdiFile);
 
                     log.Info($"Successfully Loaded Original Adi file from DB for TVOD update.");
-                    RemoveTvodUpdateContent();
+
+                    ///Content value as per mantis 0000003
+                    var contentValue = iTVConversionContext
+                                       .ItvConversionData
+                                       .Select(m => Path.GetFileName(m.MediaFileName))
+                                       .FirstOrDefault();
+                    RemoveTvodUpdateContent(contentValue);
 
                 }
                 return true;
@@ -267,9 +275,9 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
             }
         }
 
-        private void RemoveTvodUpdateContent()
+        private void RemoveTvodUpdateContent(string adiContentValue)
         {
-            AdiMapping.RemoveTvodUpdateContentSection();
+            AdiMapping.RemoveTvodUpdateContentSection(adiContentValue);
         }
 
         private void SetAdiAssetId(bool isTitleMetadata)
@@ -577,7 +585,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     ///if the config value DeleteFromSource = true delete the source media
                     if (DeleteFromSource)
                     {
-                        FileDirectoryOperations.DeleteSourceMedia(MediaLocation, Path.GetFileName(MediaFileName));
+                        FileDirectoryOperations.DeleteSourceMedia(MediaLocation);
                     }
 
                     log.Info("Starting Packaging and Delivery operations completed Successfully.");

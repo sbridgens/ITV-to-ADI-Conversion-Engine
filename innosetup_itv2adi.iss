@@ -2,10 +2,11 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "ITV2ADI Workflow Engine"
-#define MyAppVersion "2.0"
+#define MyAppVersion "2.0.301719.01"
 #define MyAppPublisher "SCH Tech ltd"
 #define MyAppURL "simon@schtech.co.uk"
 #define MyAppExeName "ITV2ADI_Engine.exe"
+#define MyFileName "ITV2ADI_Engine_Setup"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -22,8 +23,8 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=D:\Dropbox\scripts\C#\ITV2ADI_Engine\Output
-OutputBaseFilename=ITV2ADI_Engine_Setup
-Compression=lzma
+OutputBaseFilename={#MyFileName}_{#MyAppVersion}
+Compression=lzma                        
 SolidCompression=yes
 
 [Languages]
