@@ -9,6 +9,7 @@ using ITV2ADI_Engine.ITV2ADI_Database;
 using SCH_ADI;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Threading;
 
 namespace ITV2ADI_Engine.ITV2ADI_Workers
 {
@@ -294,19 +295,46 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
 
         private string GetVideoRuntime()
         {
-            if(!IsUpdate)
+            if (!IsUpdate)
             {
-                return VideoFileProperties.GetMediaInfoDuration(FullAssetName, IsUpdate);
+                var retry = 1;
+                var duration = string.Empty;
+
+                while (retry < 5)
+                {
+                    try
+                    {
+                        duration = VideoFileProperties.GetMediaInfoDuration(FullAssetName, IsUpdate);
+                        if (!string.IsNullOrEmpty(duration))
+                            break;
+                    }
+                    catch (AccessViolationException sysException)
+                    {
+                        log.Error($"[GetVideoRuntime] AccessViolationException: {sysException.Message}");
+                        if (sysException.InnerException != null)
+                        {
+                            log.Error($"[GetVideoRuntime] AccessViolationException Inner exception: {sysException.InnerException.Message}");
+                        }
+                    }
+                    catch (Exception gvrException)
+                    {
+                        log.Error($"[GetVideoRuntime] General Exception: {gvrException.Message}");
+                        if (gvrException.InnerException != null)
+                        {
+                            log.Error($"[GetVideoRuntime] General Inner exception: {gvrException.InnerException.Message}");
+                        }
+                    }
+                    log.Info($"Get video duration experienced an error, retry attempt: {++retry}");
+                    Thread.Sleep(3000);
+                }
+
+                return duration;
             }
-            else
-            {
-                return AdiMapping.ADI_FILE.Asset.Metadata.App_Data
-                                 .Where(
-                                            r => r.Name == "Run_Time"
-                                       )
-                                 .FirstOrDefault()
-                                 .Value;
-            }
+
+            return AdiMapping.ADI_FILE.Asset.Metadata
+                .App_Data
+                .FirstOrDefault(r => r.Name == "Run_Time")
+                ?.Value;
         }
 
         private bool SetProviderContentTierData()
@@ -351,7 +379,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                     log.Info("Successfully processed TVOD Update.");
                     //var test = AdiMapping.des
 
-                    AdiMapping.SaveAdi(adi, AdiMapping.ADI_FILE);
+                    AdiMapping.SaveAdi(adi);
                     AdiMapping.LoadXDocument(adi);
                     return true;
                 }

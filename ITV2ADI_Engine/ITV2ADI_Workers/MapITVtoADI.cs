@@ -141,7 +141,7 @@ namespace ITV2ADI_Engine.ITV2ADI_Workers
                 {
                     AdiMapping.RemoveUpdateAssetSection();
                 }
-                AdiMapping.SaveAdi(Path.Combine(WorkingDirectory, AdiFileName), AdiMapping.ADI_FILE);
+                AdiMapping.SaveAdi(Path.Combine(WorkingDirectory, AdiFileName));
 
                 return true;
             }
